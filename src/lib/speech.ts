@@ -1,51 +1,56 @@
-import { Platform } from 'react-native';
+import * as Speech from 'expo-speech';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
-// Web Speech API wrapper — free, built into the browser, zero API keys.
-// Native (iOS/Android) builds will need expo-speech / a native STT module
-// later; this module reports `unsupported` rather than throwing so the UI
-// can degrade gracefully instead of assuming speech always works.
+// Free, on-device speech for every platform:
+// - TTS: expo-speech (native OS voices on iOS/Android, Web Speech API on web)
+// - STT: expo-speech-recognition (SFSpeechRecognizer/SpeechRecognizer on
+//   native, Web Speech API on web) — no API keys, nothing sent to a server
+//   we run. Native builds additionally need the "expo-speech-recognition"
+//   config plugin (see app.json) and a custom dev client / EAS build, since
+//   it isn't available in Expo Go.
 
 export function isTtsSupported(): boolean {
-  return Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window;
+  // expo-speech works on every platform expo-router/RN targets; the one gap
+  // is a browser with no SpeechSynthesis at all, which speak() already no-ops on.
+  return true;
 }
 
 export function isSttSupported(): boolean {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
-  const w = window as any;
-  return Boolean(w.SpeechRecognition || w.webkitSpeechRecognition);
+  try {
+    return ExpoSpeechRecognitionModule.isRecognitionAvailable();
+  } catch {
+    return false;
+  }
 }
 
 export interface SpeakOptions {
-  rate?: number; // 0.1 - 10, 1 = normal
+  rate?: number; // 0.1 - 2, 1 = normal (expo-speech scale)
   pitch?: number; // 0 - 2
-  voiceName?: string;
+  voiceIdentifier?: string;
 }
 
 export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
-  if (!isTtsSupported()) return Promise.resolve();
   return new Promise((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = options.rate ?? 1;
-    utterance.pitch = options.pitch ?? 1;
-    utterance.lang = 'en-US';
-    if (options.voiceName) {
-      const voice = window.speechSynthesis.getVoices().find((v) => v.name === options.voiceName);
-      if (voice) utterance.voice = voice;
-    }
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    Speech.stop();
+    Speech.speak(text, {
+      language: 'en-US',
+      rate: options.rate ?? 1,
+      pitch: options.pitch ?? 1,
+      voice: options.voiceIdentifier,
+      onDone: () => resolve(),
+      onStopped: () => resolve(),
+      onError: () => resolve(),
+    });
   });
 }
 
 export function stopSpeaking(): void {
-  if (isTtsSupported()) window.speechSynthesis.cancel();
+  Speech.stop();
 }
 
-export function availableEnglishVoices(): SpeechSynthesisVoice[] {
-  if (!isTtsSupported()) return [];
-  return window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith('en'));
+export async function availableEnglishVoices(): Promise<Speech.Voice[]> {
+  const voices = await Speech.getAvailableVoicesAsync();
+  return voices.filter((v) => v.language.startsWith('en'));
 }
 
 export interface ListenResult {
@@ -53,32 +58,58 @@ export interface ListenResult {
   confidence: number;
 }
 
-let activeRecognition: any = null;
-
-export function startListening(): Promise<ListenResult> {
+// One-shot listen: requests permission, starts recognition, resolves with
+// the first final transcript (or a timeout fallback), then tears down its
+// listeners. Mirrors the old Promise-based shape the lesson screens expect.
+export function startListening(timeoutMs = 12000): Promise<ListenResult> {
   if (!isSttSupported()) return Promise.resolve({ transcript: '', confidence: 0 });
-  const w = window as any;
-  const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition;
 
-  return new Promise((resolve) => {
-    const recognition = new Recognition();
-    activeRecognition = recognition;
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+  return new Promise(async (resolve) => {
+    let settled = false;
+    const finish = (result: ListenResult) => {
+      if (settled) return;
+      settled = true;
+      resultSub.remove();
+      errorSub.remove();
+      endSub.remove();
+      clearTimeout(timer);
+      try {
+        ExpoSpeechRecognitionModule.stop();
+      } catch {
+        // already stopped
+      }
+      resolve(result);
+    };
 
-    recognition.onresult = (event: any) => {
-      const result = event.results[0][0];
-      resolve({ transcript: result.transcript, confidence: result.confidence ?? 0 });
-    };
-    recognition.onerror = () => resolve({ transcript: '', confidence: 0 });
-    recognition.onend = () => {
-      activeRecognition = null;
-    };
-    recognition.start();
+    const resultSub = ExpoSpeechRecognitionModule.addListener('result', (event) => {
+      const best = event.results[0];
+      if (best && event.isFinal !== false) {
+        finish({ transcript: best.transcript, confidence: best.confidence ?? 0 });
+      }
+    });
+    const errorSub = ExpoSpeechRecognitionModule.addListener('error', () => finish({ transcript: '', confidence: 0 }));
+    const endSub = ExpoSpeechRecognitionModule.addListener('end', () => finish({ transcript: '', confidence: 0 }));
+    const timer = setTimeout(() => finish({ transcript: '', confidence: 0 }), timeoutMs);
+
+    const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permission.granted) {
+      finish({ transcript: '', confidence: 0 });
+      return;
+    }
+
+    ExpoSpeechRecognitionModule.start({
+      lang: 'en-US',
+      interimResults: false,
+      maxAlternatives: 1,
+      continuous: false,
+    });
   });
 }
 
 export function stopListening(): void {
-  activeRecognition?.stop();
+  try {
+    ExpoSpeechRecognitionModule.stop();
+  } catch {
+    // not currently listening
+  }
 }

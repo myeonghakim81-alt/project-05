@@ -7,10 +7,11 @@ import { SkillBar } from '@/components/skill-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { vocabulary } from '@/content/vocabulary';
-import { nextActivityFor, summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
+import { nextActivityFor, pickRecommendedWord, summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
 import { useLearnerStore } from '@/store/learnerStore';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import type { MasteryState } from '@/types/domain';
 
 const ACTIVITY_LABEL: Record<string, string> = {
   vocabulary_exposure: '새 단어 노출 학습',
@@ -33,10 +34,23 @@ const SKILL_LABELS: [key: string, label: string][] = [
   ['automaticity', 'Automaticity'],
 ];
 
+const MASTERY_BADGE: Record<MasteryState, string> = {
+  EXPOSURE: '⬜️',
+  RECOGNITION: '🔹',
+  CONTEXTUAL: '🔹',
+  LISTENING_READY: '🔷',
+  RECALL_READY: '🔷',
+  EXPRESSIVE: '🟡',
+  CONVERSATIONAL: '🟡',
+  TRANSFERABLE: '🟢',
+  AUTOMATIC: '🟢',
+  MASTERED: '⭐️',
+};
+
 export default function Dashboard() {
   const router = useRouter();
   const theme = useTheme();
-  const { loaded, entries, reviewQueue, load, getOrCreate } = useLearnerStore();
+  const { loaded, entries, reviewQueue, load } = useLearnerStore();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -53,11 +67,13 @@ export default function Dashboard() {
 
   const entryList = Object.values(entries);
   const summary = summarizeDashboard(entryList);
-
-  const featuredWordId = 'word-recommend';
-  const featuredEntry = getOrCreate(featuredWordId);
-  const nextActivity = nextActivityFor(featuredEntry.scores);
   const bottleneck = entryList.length > 0 ? weakestSkill(summary.scores) : 'recognition';
+
+  const recommendedWord = pickRecommendedWord(vocabulary, entries);
+  const recommendedEntry = entries[recommendedWord.id];
+  const nextActivity = nextActivityFor(recommendedEntry?.scores ?? summary.scores);
+
+  const topics = Array.from(new Set(vocabulary.map((v) => v.topic)));
 
   return (
     <ThemedView style={styles.flex}>
@@ -93,9 +109,12 @@ export default function Dashboard() {
               현재 병목: <ThemedText type="smallBold">{bottleneck}</ThemedText>
             </ThemedText>
             <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-              {ACTIVITY_LABEL[nextActivity]}
+              {recommendedWord.word} — {ACTIVITY_LABEL[nextActivity]}
             </ThemedText>
-            <PrimaryButton label="레슨 시작하기 (recommend)" onPress={() => router.push({ pathname: '/lesson', params: { wordId: featuredWordId } })} />
+            <PrimaryButton
+              label={`레슨 시작하기 (${recommendedWord.word})`}
+              onPress={() => router.push({ pathname: '/lesson', params: { wordId: recommendedWord.id } })}
+            />
           </View>
 
           {reviewQueue.length > 0 && (
@@ -113,6 +132,36 @@ export default function Dashboard() {
               })}
             </View>
           )}
+
+          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              전체 단어 ({vocabulary.length})
+            </ThemedText>
+            {topics.map((topic) => (
+              <View key={topic} style={{ marginBottom: Spacing.three }}>
+                <ThemedText type="smallBold" themeColor="textSecondary" style={{ marginBottom: 6 }}>
+                  {topic}
+                </ThemedText>
+                {vocabulary
+                  .filter((v) => v.topic === topic)
+                  .map((v) => {
+                    const entry = entries[v.id];
+                    return (
+                      <View key={v.id} style={styles.wordRow}>
+                        <ThemedText style={{ flex: 1 }}>
+                          {MASTERY_BADGE[entry?.masteryState ?? 'EXPOSURE']} {v.word}
+                        </ThemedText>
+                        <PrimaryButton
+                          label="학습"
+                          variant="secondary"
+                          onPress={() => router.push({ pathname: '/lesson', params: { wordId: v.id } })}
+                        />
+                      </View>
+                    );
+                  })}
+              </View>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </ThemedView>
@@ -137,4 +186,5 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 20, marginBottom: Spacing.three },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   divider: { height: 1, backgroundColor: 'rgba(128,128,128,0.2)', marginVertical: 8 },
+  wordRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
 });

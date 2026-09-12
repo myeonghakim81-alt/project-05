@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
@@ -7,11 +7,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { contextById, contexts } from '@/content/contexts';
-import { dialogueById } from '@/content/dialogues';
+import { dialogueForWord } from '@/content/dialogues';
 import { phrasesForWord, vocabulary, vocabularyById } from '@/content/vocabulary';
 import { analyzeConversation } from '@/lib/conversationAnalysis';
 import { isSttSupported, isTtsSupported, speak, startListening } from '@/lib/speech';
+import { CURRENT_USER_ID } from '@/lib/storage';
 import { useLearnerStore } from '@/store/learnerStore';
+import type { DialogueScript } from '@/types/domain';
 import { useTheme } from '@/hooks/use-theme';
 
 type Step = 'learn' | 'listen' | 'shadow' | 'express' | 'conversation' | 'analysis';
@@ -30,8 +32,16 @@ export default function Lesson() {
   const params = useLocalSearchParams<{ wordId?: string }>();
   const wordId = params.wordId ?? 'word-recommend';
   const word = vocabularyById(wordId) ?? vocabulary[0];
-  const phrases = useMemo(() => shuffle(phrasesForWord(word.id)), [word.id]);
-  const dialogue = dialogueById('dialogue-book-a-table')!;
+  // Unshuffled on first render (server-rendered static export and initial
+  // client hydration must match exactly), then shuffled client-side after
+  // mount — shuffling during render would use a different Math.random()
+  // result on the server than on the client and break hydration.
+  const [phrases, setPhrases] = useState(() => phrasesForWord(word.id));
+  useEffect(() => {
+    setPhrases(shuffle(phrasesForWord(word.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [word.id]);
+  const dialogue = useMemo(() => dialogueForWord(word.id, phrases[0]?.contextId), [word.id, phrases]);
 
   const router = useRouter();
   const theme = useTheme();
@@ -140,7 +150,7 @@ export default function Lesson() {
     const analysis = analyzeConversation(nextTurns, dialogue, vocabulary);
     await recordConversationSession({
       id: `conv-${Date.now()}`,
-      userId: 'local-user',
+      userId: CURRENT_USER_ID,
       contextId: dialogue.contextId,
       startedAt: new Date().toISOString(),
       endedAt: new Date().toISOString(),
@@ -371,7 +381,7 @@ function AnalysisSummary({
   learnerTurns,
   onDone,
 }: {
-  dialogue: NonNullable<ReturnType<typeof dialogueById>>;
+  dialogue: DialogueScript;
   learnerTurns: string[];
   onDone: () => void;
 }) {

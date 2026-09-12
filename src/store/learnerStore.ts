@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { deriveMasteryState, nudge } from '@/lib/masteryEngine';
 import { WeaknessThreshold } from '@/lib/policy';
-import { learnerRepository } from '@/lib/storage';
+import { CURRENT_USER_ID, learnerRepository } from '@/lib/storage';
 import { emptySkillScores, type ConversationSession, type LearnerVocabulary, type SkillScores } from '@/types/domain';
 
 interface LearnerStoreState {
@@ -18,7 +18,7 @@ interface LearnerStoreState {
 
 function blankEntry(vocabularyItemId: string): LearnerVocabulary {
   return {
-    userId: 'local-user',
+    userId: CURRENT_USER_ID,
     vocabularyItemId,
     scores: emptySkillScores(),
     masteryState: 'EXPOSURE',

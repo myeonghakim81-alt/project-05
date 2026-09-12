@@ -5,7 +5,7 @@ import {
   WeaknessThreshold,
   vocabularyToSpeechGap,
 } from '@/lib/policy';
-import type { LearnerVocabulary, MasteryState, NextActivity, SkillScores } from '@/types/domain';
+import type { LearnerVocabulary, MasteryState, NextActivity, SkillScores, VocabularyItem } from '@/types/domain';
 
 // spec 13: adaptive "what to practice next" — bottleneck-driven, in order.
 export function nextActivityFor(scores: SkillScores): NextActivity {
@@ -50,6 +50,33 @@ export function weakestSkill(scores: SkillScores): keyof SkillScores {
 export function nudge(current: number, target: number, weight = 0.4): number {
   const next = current + (target - current) * weight;
   return Math.max(0, Math.min(100, Math.round(next)));
+}
+
+function averageScore(scores: SkillScores): number {
+  const values = Object.values(scores);
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+// Picks which word to work on next: continue the weakest word already in
+// progress, otherwise start the next word that hasn't been touched yet
+// (spec 17 curriculum order via `level`), otherwise loop back to the first.
+export function pickRecommendedWord(
+  vocabularyList: VocabularyItem[],
+  entries: Record<string, LearnerVocabulary>,
+): VocabularyItem {
+  const ordered = [...vocabularyList].sort((a, b) => a.level - b.level);
+
+  const inProgress = ordered
+    .map((item) => ({ item, entry: entries[item.id] }))
+    .filter((c): c is { item: VocabularyItem; entry: LearnerVocabulary } => Boolean(c.entry) && averageScore(c.entry.scores) > 0);
+
+  const weakestInProgress = inProgress
+    .filter((c) => averageScore(c.entry.scores) < MasteryThreshold)
+    .sort((a, b) => averageScore(a.entry.scores) - averageScore(b.entry.scores))[0];
+  if (weakestInProgress) return weakestInProgress.item;
+
+  const notStarted = ordered.find((item) => !entries[item.id]);
+  return notStarted ?? ordered[0];
 }
 
 export interface DashboardSummary {

@@ -8,9 +8,12 @@
     "scheme": "englishlearning",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.englishlearning.app",
+      "supportsTablet": true
     },
     "android": {
+      "package": "com.englishlearning.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -31,6 +34,14 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "이 앱이 말하기 연습을 위해 마이크를 사용하도록 허용합니다.",
+          "speechRecognitionPermission": "이 앱이 말한 내용을 인식하도록 허용합니다.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
       ]
     ],

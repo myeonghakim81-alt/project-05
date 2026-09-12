@@ -64,6 +64,7 @@ export interface VocabularyItem {
   pronunciation: string; // IPA or simplified respelling
   difficulty: number; // 1-10
   level: number; // curriculum level (spec 17), 1-10
+  topic: string; // display grouping label, e.g. "Restaurant" (spec 17 curriculum topics)
 }
 
 export interface ContextItem {
