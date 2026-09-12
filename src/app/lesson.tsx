@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/primary-button';
+import { SkillBar } from '@/components/skill-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -10,10 +11,16 @@ import { contextById, contexts } from '@/content/contexts';
 import { dialogueForWord } from '@/content/dialogues';
 import { phrasesForWord, vocabulary, vocabularyById } from '@/content/vocabulary';
 import { analyzeConversation } from '@/lib/conversationAnalysis';
+import {
+  analyzeConversationWithGemini,
+  generateAiTurn,
+  isGeminiConfigured,
+  type ConversationTurn,
+  type GeminiConversationAnalysis,
+} from '@/lib/gemini';
 import { isSttSupported, isTtsSupported, speak, startListening } from '@/lib/speech';
 import { CURRENT_USER_ID } from '@/lib/storage';
 import { useLearnerStore } from '@/store/learnerStore';
-import type { DialogueScript } from '@/types/domain';
 import { useTheme } from '@/hooks/use-theme';
 
 type Step = 'learn' | 'listen' | 'shadow' | 'express' | 'conversation' | 'analysis';
@@ -27,6 +34,15 @@ const STEP_LABEL: Record<Step, string> = {
   conversation: 'Conversation',
   analysis: 'Analysis',
 };
+
+// How many exchanges a live Gemini roleplay runs for. Scripted dialogues use
+// their own turns.length instead (see totalTurns below).
+const DYNAMIC_MAX_TURNS = 5;
+
+interface FinalAnalysis {
+  wordUsage: { vocabularyItemId: string; used: boolean }[];
+  alternativeSuggestions: { matchedPhrase: string; suggestVocabularyId: string }[];
+}
 
 export default function Lesson() {
   const params = useLocalSearchParams<{ wordId?: string }>();
@@ -42,6 +58,10 @@ export default function Lesson() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word.id]);
   const dialogue = useMemo(() => dialogueForWord(word.id, phrases[0]?.contextId), [word.id, phrases]);
+  const targetWords = useMemo(
+    () => dialogue.targetVocabularyIds.map((id) => vocabularyById(id)?.word ?? id),
+    [dialogue],
+  );
 
   const router = useRouter();
   const theme = useTheme();
@@ -66,13 +86,26 @@ export default function Lesson() {
   const [expressSubmitted, setExpressSubmitted] = useState(false);
 
   // --- Conversation step state ---
+  // aiTurns holds the AI's line for every turn reached so far. In scripted
+  // mode it's filled upfront from dialogue.turns; in live Gemini mode it
+  // grows one line at a time. Rendering always just reads aiTurns[i], so the
+  // two modes share one code path.
   const [turnIndex, setTurnIndex] = useState(0);
   const [currentReply, setCurrentReply] = useState('');
   const [learnerTurns, setLearnerTurns] = useState<string[]>([]);
   const [conversationListening, setConversationListening] = useState(false);
+  const [aiTurns, setAiTurns] = useState<string[]>([]);
+  const [aiTurnLoading, setAiTurnLoading] = useState(false);
+  const [geminiFailed, setGeminiFailed] = useState(false);
+  const [geminiNotice, setGeminiNotice] = useState<string | null>(null);
+
+  const useDynamicConversation = isGeminiConfigured && !geminiFailed;
+  const totalTurns = useDynamicConversation ? DYNAMIC_MAX_TURNS : dialogue.turns.length;
 
   // --- Analysis result (computed once, when entering analysis step) ---
   const [analysisDone, setAnalysisDone] = useState(false);
+  const [finalAnalysis, setFinalAnalysis] = useState<FinalAnalysis | null>(null);
+  const [geminiAnalysis, setGeminiAnalysis] = useState<GeminiConversationAnalysis | null>(null);
 
   async function goToStep(next: Step) {
     setStep(next);
@@ -129,9 +162,33 @@ export default function Lesson() {
     await bumpTowards(word.id, { expression: target }, 0.5);
   }
 
+  async function beginConversation() {
+    setTurnIndex(0);
+    setLearnerTurns([]);
+    setAiTurns([]);
+    setGeminiAnalysis(null);
+    setGeminiNotice(null);
+
+    if (isGeminiConfigured && !geminiFailed) {
+      setAiTurnLoading(true);
+      try {
+        const line = await generateAiTurn(dialogue.situation, targetWords, [], DYNAMIC_MAX_TURNS <= 1);
+        setAiTurns([line]);
+      } catch {
+        setGeminiFailed(true);
+        setGeminiNotice('실시간 AI 연결에 실패해 준비된 대화로 진행합니다.');
+        setAiTurns(dialogue.turns.map((t) => t.aiText));
+      }
+      setAiTurnLoading(false);
+    } else {
+      setAiTurns(dialogue.turns.map((t) => t.aiText));
+    }
+  }
+
   function goToConversation() {
     setExpressSubmitted(false);
     setExpressText('');
+    beginConversation();
     goToStep('conversation');
   }
 
@@ -141,32 +198,82 @@ export default function Lesson() {
     setLearnerTurns(nextTurns);
     setCurrentReply('');
 
-    if (turnIndex + 1 < dialogue.turns.length) {
-      setTurnIndex((i) => i + 1);
+    const nextIndex = turnIndex + 1;
+    if (nextIndex < totalTurns) {
+      if (useDynamicConversation) {
+        setAiTurnLoading(true);
+        try {
+          const history = buildHistory(aiTurns, nextTurns);
+          const line = await generateAiTurn(dialogue.situation, targetWords, history, nextIndex + 1 >= totalTurns);
+          setAiTurns((prev) => [...prev, line]);
+          setAiTurnLoading(false);
+          setTurnIndex(nextIndex);
+        } catch {
+          setAiTurnLoading(false);
+          setGeminiFailed(true);
+          setGeminiNotice('실시간 AI 연결에 문제가 생겨 준비된 대화로 다시 시작합니다.');
+          setAiTurns(dialogue.turns.map((t) => t.aiText));
+          setTurnIndex(0);
+          setLearnerTurns([]);
+        }
+      } else {
+        setTurnIndex(nextIndex);
+      }
       return;
     }
 
-    // Conversation finished — analyze and update every target word independently.
-    const analysis = analyzeConversation(nextTurns, dialogue, vocabulary);
+    await finishConversation(nextTurns);
+  }
+
+  async function finishConversation(nextTurns: string[]) {
+    const transcript = aiTurns
+      .map((text, i) => [
+        { speaker: 'ai' as const, text, atMs: i * 2 },
+        { speaker: 'learner' as const, text: nextTurns[i] ?? '', atMs: i * 2 + 1 },
+      ])
+      .flat();
+
     await recordConversationSession({
       id: `conv-${Date.now()}`,
       userId: CURRENT_USER_ID,
       contextId: dialogue.contextId,
       startedAt: new Date().toISOString(),
       endedAt: new Date().toISOString(),
-      transcript: dialogue.turns.map((t, i) => [
-        { speaker: 'ai' as const, text: t.aiText, atMs: i * 2 },
-        { speaker: 'learner' as const, text: nextTurns[i] ?? '', atMs: i * 2 + 1 },
-      ]).flat(),
+      transcript,
       overallScore: null,
     });
 
-    for (const usage of analysis.wordUsage) {
-      const suggested = analysis.alternativeSuggestions.some((s) => s.suggestVocabularyId === usage.vocabularyItemId);
+    let wordUsage: { vocabularyItemId: string; used: boolean }[];
+    let alternativeSuggestions: { matchedPhrase: string; suggestVocabularyId: string }[] = [];
+
+    if (useDynamicConversation) {
+      try {
+        const history = buildHistory(aiTurns, nextTurns);
+        const result = await analyzeConversationWithGemini(history, targetWords);
+        wordUsage = dialogue.targetVocabularyIds.map((id) => {
+          const w = vocabularyById(id)?.word.toLowerCase();
+          const match = result.wordUsage.find((u) => u.word.toLowerCase() === w);
+          return { vocabularyItemId: id, used: match?.used ?? false };
+        });
+        setGeminiAnalysis(result);
+      } catch {
+        const local = analyzeConversation(nextTurns, dialogue, vocabulary);
+        wordUsage = local.wordUsage;
+        alternativeSuggestions = local.alternativeSuggestions;
+      }
+    } else {
+      const local = analyzeConversation(nextTurns, dialogue, vocabulary);
+      wordUsage = local.wordUsage;
+      alternativeSuggestions = local.alternativeSuggestions;
+    }
+
+    for (const usage of wordUsage) {
+      const suggested = alternativeSuggestions.some((s) => s.suggestVocabularyId === usage.vocabularyItemId);
       const target = usage.used ? 82 : suggested ? 55 : 30;
       await bumpTowards(usage.vocabularyItemId, { conversationUsage: target, contextTransfer: usage.used ? 65 : 40 }, 0.5);
     }
 
+    setFinalAnalysis({ wordUsage, alternativeSuggestions });
     setAnalysisDone(true);
     goToStep('analysis');
   }
@@ -319,19 +426,29 @@ export default function Lesson() {
 
           {step === 'conversation' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: 4 }}>
-                {dialogue.title}
-              </ThemedText>
+              <View style={styles.headerRow}>
+                <ThemedText type="subtitle" style={{ fontSize: 20 }}>
+                  {dialogue.title}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {useDynamicConversation ? '🔮 실시간 AI' : '📜 준비된 대화'}
+                </ThemedText>
+              </View>
               <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
                 {dialogue.situation}
               </ThemedText>
+              {geminiNotice && (
+                <ThemedText themeColor="warning" style={{ marginBottom: Spacing.two }}>
+                  ⚠️ {geminiNotice}
+                </ThemedText>
+              )}
 
-              {dialogue.turns.slice(0, turnIndex + 1).map((t, i) => (
-                <View key={t.id} style={{ marginBottom: Spacing.two }}>
+              {Array.from({ length: turnIndex + 1 }).map((_, i) => (
+                <View key={i} style={{ marginBottom: Spacing.two }}>
                   <ThemedText type="smallBold">AI</ThemedText>
-                  <ThemedText style={{ marginBottom: 4 }}>{t.aiText}</ThemedText>
-                  {i === turnIndex && (
-                    <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(t.aiText)} />
+                  <ThemedText style={{ marginBottom: 4 }}>{aiTurns[i] ?? '...'}</ThemedText>
+                  {i === turnIndex && aiTurns[i] && (
+                    <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(aiTurns[i])} />
                   )}
                   {learnerTurns[i] ? (
                     <>
@@ -346,11 +463,12 @@ export default function Lesson() {
 
               <TextInput
                 style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-                placeholder={dialogue.turns[turnIndex].placeholder}
+                placeholder={useDynamicConversation ? 'Type your reply...' : dialogue.turns[turnIndex]?.placeholder}
                 placeholderTextColor={theme.textSecondary}
                 value={currentReply}
                 onChangeText={setCurrentReply}
                 multiline
+                editable={!aiTurnLoading}
               />
               {isSttSupported() && (
                 <>
@@ -358,17 +476,26 @@ export default function Lesson() {
                     label={conversationListening ? '🎙 듣는 중...' : '🎙 말로 답하기'}
                     variant="secondary"
                     onPress={startConversationVoice}
-                    disabled={conversationListening}
+                    disabled={conversationListening || aiTurnLoading}
                   />
                   <View style={{ height: 8 }} />
                 </>
               )}
-              <PrimaryButton label="전송" onPress={submitConversationTurn} disabled={currentReply.trim().length === 0} />
+              <PrimaryButton
+                label={aiTurnLoading ? 'AI가 답변을 준비 중...' : '전송'}
+                onPress={submitConversationTurn}
+                disabled={currentReply.trim().length === 0 || aiTurnLoading || !aiTurns[turnIndex]}
+              />
             </View>
           )}
 
-          {step === 'analysis' && analysisDone && (
-            <AnalysisSummary dialogue={dialogue} learnerTurns={learnerTurns} onDone={() => router.replace('/')} />
+          {step === 'analysis' && analysisDone && finalAnalysis && (
+            <AnalysisSummary
+              wordUsage={finalAnalysis.wordUsage}
+              alternativeSuggestions={finalAnalysis.alternativeSuggestions}
+              geminiAnalysis={geminiAnalysis}
+              onDone={() => router.replace('/')}
+            />
           )}
         </View>
       </ScrollView>
@@ -377,16 +504,17 @@ export default function Lesson() {
 }
 
 function AnalysisSummary({
-  dialogue,
-  learnerTurns,
+  wordUsage,
+  alternativeSuggestions,
+  geminiAnalysis,
   onDone,
 }: {
-  dialogue: DialogueScript;
-  learnerTurns: string[];
+  wordUsage: { vocabularyItemId: string; used: boolean }[];
+  alternativeSuggestions: { matchedPhrase: string; suggestVocabularyId: string }[];
+  geminiAnalysis: GeminiConversationAnalysis | null;
   onDone: () => void;
 }) {
   const theme = useTheme();
-  const analysis = useMemo(() => analyzeConversation(learnerTurns, dialogue, vocabulary), [dialogue, learnerTurns]);
 
   return (
     <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
@@ -394,7 +522,16 @@ function AnalysisSummary({
         회화 분석 결과
       </ThemedText>
 
-      {analysis.wordUsage.map((u) => {
+      {geminiAnalysis && (
+        <View style={{ marginBottom: Spacing.three }}>
+          <SkillBar label="Fluency" value={geminiAnalysis.fluency} />
+          <SkillBar label="Grammar" value={geminiAnalysis.grammar} />
+          <SkillBar label="Naturalness" value={geminiAnalysis.naturalness} />
+          <SkillBar label="Appropriateness" value={geminiAnalysis.appropriateness} />
+        </View>
+      )}
+
+      {wordUsage.map((u) => {
         const item = vocabularyById(u.vocabularyItemId);
         return (
           <ThemedText key={u.vocabularyItemId} style={{ marginBottom: 4 }}>
@@ -403,7 +540,7 @@ function AnalysisSummary({
         );
       })}
 
-      {analysis.alternativeSuggestions.map((s, i) => {
+      {alternativeSuggestions.map((s, i) => {
         const item = vocabularyById(s.suggestVocabularyId);
         return (
           <ThemedText key={i} themeColor="textSecondary" style={{ marginTop: 8 }}>
@@ -412,10 +549,28 @@ function AnalysisSummary({
         );
       })}
 
+      {geminiAnalysis?.feedback && (
+        <ThemedText themeColor="textSecondary" style={{ marginTop: 8 }}>
+          💬 {geminiAnalysis.feedback}
+        </ThemedText>
+      )}
+
       <View style={{ height: Spacing.four }} />
       <PrimaryButton label="대시보드로 돌아가기" onPress={onDone} />
     </View>
   );
+}
+
+function buildHistory(aiTurnsArr: string[], learnerTurnsArr: string[]): ConversationTurn[] {
+  const history: ConversationTurn[] = [];
+  const len = Math.max(aiTurnsArr.length, learnerTurnsArr.length);
+  for (let i = 0; i < len; i++) {
+    if (aiTurnsArr[i] !== undefined) history.push({ speaker: 'ai', text: aiTurnsArr[i] });
+    if (learnerTurnsArr[i] !== undefined && learnerTurnsArr[i] !== '') {
+      history.push({ speaker: 'learner', text: learnerTurnsArr[i] });
+    }
+  }
+  return history;
 }
 
 function shuffle<T>(arr: T[]): T[] {
