@@ -1,5 +1,8 @@
 import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
+import { Platform } from 'react-native';
+
+import { isGoogleTtsConfigured, synthesizeSpeech } from '@/lib/googleTts';
 
 // Free, on-device speech for every platform:
 // - TTS: expo-speech (native OS voices on iOS/Android, Web Speech API on web)
@@ -75,7 +78,27 @@ async function pickBestVoice(): Promise<Speech.Voice | null> {
   return cachedBestVoice;
 }
 
-export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
+// Currently playing Google TTS clip, if any — tracked so stopSpeaking() and
+// a fresh speak() call can stop it (there's no global "speechSynthesis" to
+// reach for once audio comes from a plain <audio> element).
+let currentGoogleAudio: HTMLAudioElement | null = null;
+
+function speakWithGoogleTts(text: string, rate: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    synthesizeSpeech(text, rate)
+      .then((base64) => {
+        currentGoogleAudio?.pause();
+        const audio = new Audio(`data:audio/mp3;base64,${base64}`);
+        currentGoogleAudio = audio;
+        audio.onended = () => resolve();
+        audio.onerror = () => reject(new Error('Google TTS audio playback failed'));
+        audio.play().catch(reject);
+      })
+      .catch(reject);
+  });
+}
+
+function speakWithDeviceVoice(text: string, options: SpeakOptions): Promise<void> {
   return new Promise(async (resolve) => {
     const voice = options.voiceIdentifier ?? (await pickBestVoice().catch(() => null))?.identifier;
     Speech.stop();
@@ -84,9 +107,9 @@ export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
       // Slightly under "normal" reads more naturally for most TTS voices and
       // helps comprehension for a learner — but rate/pitch are single flat
       // numbers for the whole sentence; the Web Speech API has no way to
-      // express human-like rising/falling intonation. That gap can only be
-      // closed by swapping in an actual neural TTS engine, not by tuning
-      // these two numbers further.
+      // express human-like rising/falling intonation. That gap is closed by
+      // Google Cloud TTS above when it's configured — this remains the
+      // always-available free fallback.
       rate: options.rate ?? 0.95,
       pitch: options.pitch ?? 1,
       voice,
@@ -97,8 +120,22 @@ export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
   });
 }
 
+export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
+  // Google Cloud TTS (when configured) gives genuinely natural intonation,
+  // unlike the flat rate/pitch-only Web Speech API. Native audio playback
+  // for it isn't wired up yet, so it's web-only for now; every other case —
+  // not configured, native platform, or the request itself failing (bad
+  // key, quota, offline) — falls back to the on-device voice so speech
+  // never just stops working.
+  if (isGoogleTtsConfigured && Platform.OS === 'web') {
+    return speakWithGoogleTts(text, options.rate ?? 0.95).catch(() => speakWithDeviceVoice(text, options));
+  }
+  return speakWithDeviceVoice(text, options);
+}
+
 export function stopSpeaking(): void {
   Speech.stop();
+  currentGoogleAudio?.pause();
 }
 
 export async function availableEnglishVoices(): Promise<Speech.Voice[]> {

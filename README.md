@@ -36,11 +36,10 @@ npm run android
 
 ⚠️ 아직 로그인 기능이 없어 모든 학습자가 `local-user` 하나의 id를 공유합니다. 여러 사용자를 지원하려면 Supabase Auth 도입 후 `supabase/schema.sql`의 RLS 정책을 실제 사용자 기준으로 변경해야 합니다.
 
-## 음성: 무료, 기기 자체 처리 (웹 + 네이티브 공용)
+## 음성
 
-- TTS: `expo-speech` — iOS/Android는 OS 내장 음성 엔진, 웹은 브라우저 Web Speech API
-- STT: `expo-speech-recognition` — iOS `SFSpeechRecognizer` / Android `SpeechRecognizer` / 웹 Web Speech API
-- 둘 다 **API 키 없이 무료**로 동작하며, 웹에서는 지금 바로 동작합니다.
+- STT(듣고 인식): `expo-speech-recognition` — iOS `SFSpeechRecognizer` / Android `SpeechRecognizer` / 웹 Web Speech API. **API 키 없이 무료**, 웹에서는 지금 바로 동작합니다.
+- TTS(듣기, 🔊 버튼): 기본은 `expo-speech`(iOS/Android OS 내장 음성, 웹은 브라우저 Web Speech API) — API 키 없이 무료지만, 억양 조절이 안 되는 API 특성상 다소 로봇처럼 들립니다. `EXPO_PUBLIC_GOOGLE_TTS_API_KEY`를 설정하면 자연스러운 Google Cloud Neural2 음성으로 자동 전환됩니다(현재 웹 한정) — `docs/google-tts.md` 참고. 키가 없거나 요청이 실패하면 자동으로 기존 기기 음성으로 대체됩니다.
 
 ## 앱(iOS/Android) 빌드로 전환
 
