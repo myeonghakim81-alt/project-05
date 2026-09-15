@@ -70,17 +70,23 @@ export async function generateAiTurn(
   history: ConversationTurn[],
   isFinalTurn: boolean,
 ): Promise<string> {
+  // Avoid the word "you" as a role label anywhere here — the situation text
+  // itself uses "you" to mean the learner (e.g. "You are calling a
+  // restaurant..."), and reusing "you" for the model's own role in the same
+  // prompt caused it to roleplay as the learner instead of the counterpart
+  // (the model would try to book/order/ask for things itself).
   const historyText = history.length
-    ? history.map((h) => `${h.speaker === 'ai' ? 'You' : 'Learner'}: ${h.text}`).join('\n')
+    ? history.map((h) => `${h.speaker === 'ai' ? 'Other character' : 'Learner'}: ${h.text}`).join('\n')
     : '(the conversation is just starting)';
 
-  const prompt = `You are roleplaying with an English learner in this situation: ${situation}
+  const prompt = `An English learner is practicing this situation: ${situation}
+In that sentence, "you" refers to the learner. You are playing the OTHER character in the scene — whoever the learner is naturally talking to (e.g. restaurant/hotel/cafe staff, a stranger on the street). Never speak as the learner, and never book/order/ask for something yourself — respond to the learner instead.
 Words the learner has recently studied and might naturally use here (do NOT mention this list or force them in): ${targetWords.join(', ')}.
 
 Conversation so far:
 ${historyText}
 
-Write ONLY your next line as "You" in the roleplay — one or two short, natural sentences, no labels, no quotes, no stage directions.${
+Write ONLY your next line as the other character — one or two short, natural sentences, no labels, no quotes, no stage directions.${
     isFinalTurn ? ' This should naturally wrap up and close the conversation.' : ''
   }`;
 
