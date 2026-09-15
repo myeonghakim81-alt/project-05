@@ -30,7 +30,12 @@ async function callGemini(prompt: string): Promise<string> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.8, maxOutputTokens: 300 },
+          // thinkingBudget: 0 disables this model's default internal "thinking"
+          // pass — without it, thinking tokens ate the entire maxOutputTokens
+          // budget and the real answer came back truncated (finishReason
+          // MAX_TOKENS with an empty-ish response). Not needed for a one-line
+          // conversational reply or a structured JSON judgment anyway.
+          generationConfig: { temperature: 0.8, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } },
         }),
         signal: controller.signal,
       },
