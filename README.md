@@ -61,4 +61,4 @@ npx eas-cli build --profile production --platform android
 
 ## AI 대화 고도화 (Gemini, 선택)
 
-기본은 사전 작성된 스크립트 대화라 API 키가 전혀 필요 없습니다. 더 자유로운 대화를 원하면 `docs/gemini.md`를 참고해 무료 Gemini API 키를 `.env`에 추가하세요 — 키가 없으면 자동으로 스크립트 대화로 동작합니다.
+기본은 사전 작성된 스크립트 대화라 API 키가 전혀 필요 없습니다. 더 자유로운 대화를 원하면 `docs/gemini.md`를 참고하세요 — Gemini는 **Supabase Edge Function을 통해서만** 호출됩니다(클라이언트가 직접 키를 들고 있지 않도록). 위 Supabase 설정만 돼 있으면 자동으로 실시간 모드로 전환되고, 함수가 없거나 실패하면 스크립트 대화로 돌아갑니다.

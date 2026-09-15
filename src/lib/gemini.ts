@@ -1,58 +1,57 @@
-// Optional live AI conversation via Google's Gemini API (free tier available
-// at https://aistudio.google.com/apikey — see docs/gemini.md).
+// Optional live AI conversation via Google's Gemini API, called through a
+// Supabase Edge Function proxy (supabase/functions/gemini-proxy) instead of
+// directly from the client — see docs/gemini.md. This keeps the real Gemini
+// API key on the server only; the client never holds a value that could be
+// extracted from the shipped JS bundle. Availability follows Supabase's own
+// config (same URL/anon key already used for storage) rather than a
+// Gemini-specific env var.
 //
-// Everything here is additive: when no key is configured, lesson.tsx never
-// calls into this module and the app behaves exactly as it did with the
-// scripted dialogues in src/content/dialogues.ts. Every call below is meant
-// to be wrapped in try/catch by its caller and fall back to that scripted
-// behavior on any failure (missing/invalid key, rate limit, offline, bad
-// JSON) — a free public API should never be a hard dependency.
+// Everything here is additive: when Supabase isn't configured, lesson.tsx
+// never calls into this module and the app behaves exactly as it did with
+// the scripted dialogues in src/content/dialogues.ts. Every call below is
+// meant to be wrapped in try/catch by its caller and fall back to that
+// scripted behavior on any failure (proxy not deployed, rate limit, offline,
+// bad JSON) — this should never be a hard dependency.
 
-const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-const MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-3.6-flash';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const PROXY_FUNCTION_NAME = 'gemini-proxy';
 
-export const isGeminiConfigured = Boolean(API_KEY);
+export const isGeminiConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 const REQUEST_TIMEOUT_MS = 15000;
 
 async function callGemini(prompt: string): Promise<string> {
-  if (!API_KEY) throw new Error('Gemini API key is not configured');
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error('Supabase is not configured, so the Gemini proxy is unavailable');
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   let response: Response;
   try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          // thinkingBudget: 0 disables this model's default internal "thinking"
-          // pass — without it, thinking tokens ate the entire maxOutputTokens
-          // budget and the real answer came back truncated (finishReason
-          // MAX_TOKENS with an empty-ish response). Not needed for a one-line
-          // conversational reply or a structured JSON judgment anyway.
-          generationConfig: { temperature: 0.8, maxOutputTokens: 300, thinkingConfig: { thinkingBudget: 0 } },
-        }),
-        signal: controller.signal,
+    response = await fetch(`${SUPABASE_URL}/functions/v1/${PROXY_FUNCTION_NAME}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-    );
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    });
   } finally {
     clearTimeout(timeout);
   }
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(`Gemini request failed (${response.status}): ${body.slice(0, 200)}`);
-  }
+  const data = await response.json().catch(() => null);
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
-  if (!text.trim()) throw new Error('Gemini returned an empty response');
-  return text.trim();
+  if (!response.ok || !data) {
+    const detail = data?.error ?? (await response.text().catch(() => ''));
+    throw new Error(`Gemini proxy request failed (${response.status}): ${String(detail).slice(0, 200)}`);
+  }
+  if (data.error) throw new Error(`Gemini proxy error: ${data.error}`);
+  if (!data.text || !String(data.text).trim()) throw new Error('Gemini proxy returned an empty response');
+  return String(data.text).trim();
 }
 
 export interface ConversationTurn {
