@@ -9,7 +9,7 @@
 // JSON) — a free public API should never be a hard dependency.
 
 const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-const MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-2.0-flash';
+const MODEL = process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-3.6-flash';
 
 export const isGeminiConfigured = Boolean(API_KEY);
 

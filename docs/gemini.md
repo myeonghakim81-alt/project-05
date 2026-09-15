@@ -25,7 +25,7 @@ EXPO_PUBLIC_GEMINI_API_KEY=여기에_발급받은_키
 - `generateAiTurn()`이 상황(situation)과 지금까지의 대화 기록만 Gemini에 전달해 AI의 다음 대사 한두 문장을 받아옵니다. spec 10 원칙대로, 목표 단어를 "반드시 사용하라"고 지시하지 않고 참고 정보로만 넘깁니다.
 - 대화가 끝나면 `analyzeConversationWithGemini()`가 전체 transcript를 넘겨 JSON 형식으로 단어 사용 여부 + 4개 말하기 지표 + 짧은 피드백을 받아옵니다.
 - 두 함수 모두 실패(네트워크 오류, 키 오류, 요청 제한, 잘못된 JSON 등)하면 자동으로 `src/lib/conversationAnalysis.ts`의 로컬 키워드 분석 + 스크립트 대화로 폴백합니다 — 무료 API가 단일 장애점이 되지 않습니다.
-- 모델은 `EXPO_PUBLIC_GEMINI_MODEL`로 바꿀 수 있습니다 (기본값 `gemini-2.0-flash`). Google이 모델명을 바꾸거나 폐지하면 이 값만 갱신하면 됩니다.
+- 모델은 `EXPO_PUBLIC_GEMINI_MODEL`로 바꿀 수 있습니다 (기본값 `gemini-3.6-flash`). Google이 모델명을 바꾸거나 폐지하면 이 값만 갱신하면 됩니다 (실제로 이 문서를 쓰는 동안 `gemini-2.0-flash`가 폐지되어 한 번 바뀌었습니다).
 
 ## 4. 참고
 
