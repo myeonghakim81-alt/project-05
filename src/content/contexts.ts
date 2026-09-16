@@ -29,6 +29,24 @@ export const contexts: ContextItem[] = [
   { id: 'ctx-daily-routine', category: 'daily routine', level: 3, description: 'Describing everyday habits' },
   { id: 'ctx-weather', category: 'weather', level: 3, description: 'Talking about the weather' },
   { id: 'ctx-appointments', category: 'appointments', level: 3, description: 'Scheduling and keeping appointments' },
+
+  // Level 4 — Everyday Life (spec 17)
+  { id: 'ctx-friends', category: 'friends', level: 4, description: 'Talking about and with friends' },
+  { id: 'ctx-invitations', category: 'invitations', level: 4, description: 'Inviting someone and responding to invitations' },
+  { id: 'ctx-requests', category: 'requests', level: 4, description: 'Asking someone for help or a favor' },
+  { id: 'ctx-apologies', category: 'apologies', level: 4, description: 'Apologizing and responding to an apology' },
+  { id: 'ctx-feelings', category: 'feelings', level: 4, description: 'Describing emotions and feelings' },
+  { id: 'ctx-weekends', category: 'weekends', level: 4, description: 'Talking about weekend plans and activities' },
+  { id: 'ctx-experiences', category: 'personal experiences', level: 4, description: 'Sharing personal experiences and stories' },
+
+  // Level 5 — Social Conversation (spec 17)
+  { id: 'ctx-small-talk', category: 'small talk', level: 5, description: 'Light, everyday conversation with acquaintances' },
+  { id: 'ctx-interests', category: 'interests', level: 5, description: 'Talking about what interests you' },
+  { id: 'ctx-culture', category: 'culture', level: 5, description: 'Talking about culture and customs' },
+  { id: 'ctx-movies-music', category: 'movies & music', level: 5, description: 'Talking about films and music' },
+  { id: 'ctx-food', category: 'food', level: 5, description: 'Talking about food and eating habits' },
+  { id: 'ctx-travel-experiences', category: 'travel experiences', level: 5, description: 'Sharing stories from past trips' },
+  { id: 'ctx-conversation', category: 'maintaining conversation', level: 5, description: 'Keeping a conversation going naturally' },
 ];
 
 export function contextById(id: string): ContextItem | undefined {

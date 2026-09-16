@@ -400,6 +400,270 @@ export const vocabulary: VocabularyItem[] = [
     level: 3,
     topic: 'Appointments',
   },
+
+  // --- Level 4 — Everyday Life ---
+  {
+    id: 'word-friend',
+    word: 'friend',
+    partOfSpeech: 'noun',
+    definition: 'a person you know well and like',
+    pronunciation: '/frend/',
+    difficulty: 2,
+    level: 4,
+    topic: 'Friends',
+  },
+  {
+    id: 'word-invite',
+    word: 'invite',
+    partOfSpeech: 'verb',
+    definition: 'to ask someone to come to an event or place',
+    pronunciation: '/ɪnˈvaɪt/',
+    difficulty: 3,
+    level: 4,
+    topic: 'Invitations',
+  },
+  {
+    id: 'word-party',
+    word: 'party',
+    partOfSpeech: 'noun',
+    definition: 'a social event where people meet to celebrate or enjoy themselves',
+    pronunciation: '/ˈpɑːrti/',
+    difficulty: 2,
+    level: 4,
+    topic: 'Invitations',
+  },
+  {
+    id: 'word-ask',
+    word: 'ask',
+    partOfSpeech: 'verb',
+    definition: 'to say something in order to get information or make a request',
+    pronunciation: '/æsk/',
+    difficulty: 2,
+    level: 4,
+    topic: 'Requests',
+  },
+  {
+    id: 'word-favor',
+    word: 'favor',
+    partOfSpeech: 'noun',
+    definition: 'a kind or helpful act you ask of or do for someone',
+    pronunciation: '/ˈfeɪvər/',
+    difficulty: 3,
+    level: 4,
+    topic: 'Requests',
+  },
+  {
+    id: 'word-apologize',
+    word: 'apologize',
+    partOfSpeech: 'verb',
+    definition: 'to say sorry for something you did wrong',
+    pronunciation: '/əˈpɑːlədʒaɪz/',
+    difficulty: 3,
+    level: 4,
+    topic: 'Apologies',
+  },
+  {
+    id: 'word-mistake',
+    word: 'mistake',
+    partOfSpeech: 'noun',
+    definition: 'something done incorrectly, by accident or lack of knowledge',
+    pronunciation: '/mɪˈsteɪk/',
+    difficulty: 3,
+    level: 4,
+    topic: 'Apologies',
+  },
+  {
+    id: 'word-feel',
+    word: 'feel',
+    partOfSpeech: 'verb',
+    definition: 'to experience a physical or emotional state',
+    pronunciation: '/fiːl/',
+    difficulty: 2,
+    level: 4,
+    topic: 'Feelings',
+  },
+  {
+    id: 'word-excited',
+    word: 'excited',
+    partOfSpeech: 'adjective',
+    definition: 'feeling very happy and enthusiastic about something',
+    pronunciation: '/ɪkˈsaɪtɪd/',
+    difficulty: 3,
+    level: 4,
+    topic: 'Feelings',
+  },
+  {
+    id: 'word-weekend',
+    word: 'weekend',
+    partOfSpeech: 'noun',
+    definition: 'Saturday and Sunday',
+    pronunciation: '/ˈwiːkend/',
+    difficulty: 2,
+    level: 4,
+    topic: 'Weekends',
+  },
+  {
+    id: 'word-relax',
+    word: 'relax',
+    partOfSpeech: 'verb',
+    definition: 'to rest and stop worrying or working',
+    pronunciation: '/rɪˈlæks/',
+    difficulty: 3,
+    level: 4,
+    topic: 'Weekends',
+  },
+  {
+    id: 'word-experience',
+    word: 'experience',
+    partOfSpeech: 'noun',
+    definition: 'something that happens to you that affects how you feel or what you know',
+    pronunciation: '/ɪkˈspɪriəns/',
+    difficulty: 4,
+    level: 4,
+    topic: 'Personal Experiences',
+  },
+  {
+    id: 'word-happen',
+    word: 'happen',
+    partOfSpeech: 'verb',
+    definition: 'to take place; to occur',
+    pronunciation: '/ˈhæpən/',
+    difficulty: 2,
+    level: 4,
+    topic: 'Personal Experiences',
+  },
+
+  // --- Level 5 — Social Conversation ---
+  {
+    id: 'word-interesting',
+    word: 'interesting',
+    partOfSpeech: 'adjective',
+    definition: 'attracting attention or curiosity',
+    pronunciation: '/ˈɪntrəstɪŋ/',
+    difficulty: 3,
+    level: 5,
+    topic: 'Interests',
+  },
+  {
+    id: 'word-curious',
+    word: 'curious',
+    partOfSpeech: 'adjective',
+    definition: 'eager to know or learn something',
+    pronunciation: '/ˈkjʊriəs/',
+    difficulty: 3,
+    level: 5,
+    topic: 'Interests',
+  },
+  {
+    id: 'word-tradition',
+    word: 'tradition',
+    partOfSpeech: 'noun',
+    definition: 'a custom or belief passed down through generations',
+    pronunciation: '/trəˈdɪʃən/',
+    difficulty: 4,
+    level: 5,
+    topic: 'Culture',
+  },
+  {
+    id: 'word-custom',
+    word: 'custom',
+    partOfSpeech: 'noun',
+    definition: 'a usual way of behaving or doing things in a place or culture',
+    pronunciation: '/ˈkʌstəm/',
+    difficulty: 4,
+    level: 5,
+    topic: 'Culture',
+  },
+  {
+    id: 'word-genre',
+    word: 'genre',
+    partOfSpeech: 'noun',
+    definition: 'a category of art, music, or writing with a particular style',
+    pronunciation: '/ˈʒɑːnrə/',
+    difficulty: 4,
+    level: 5,
+    topic: 'Movies & Music',
+  },
+  {
+    id: 'word-actor',
+    word: 'actor',
+    partOfSpeech: 'noun',
+    definition: 'a person who performs in films, TV shows, or plays',
+    pronunciation: '/ˈæktər/',
+    difficulty: 2,
+    level: 5,
+    topic: 'Movies & Music',
+  },
+  {
+    id: 'word-song',
+    word: 'song',
+    partOfSpeech: 'noun',
+    definition: 'a short piece of music with words that is sung',
+    pronunciation: '/sɔːŋ/',
+    difficulty: 1,
+    level: 5,
+    topic: 'Movies & Music',
+  },
+  {
+    id: 'word-delicious',
+    word: 'delicious',
+    partOfSpeech: 'adjective',
+    definition: 'having a very pleasant taste',
+    pronunciation: '/dɪˈlɪʃəs/',
+    difficulty: 3,
+    level: 5,
+    topic: 'Food',
+  },
+  {
+    id: 'word-spicy',
+    word: 'spicy',
+    partOfSpeech: 'adjective',
+    definition: 'having a strong, hot flavor',
+    pronunciation: '/ˈspaɪsi/',
+    difficulty: 2,
+    level: 5,
+    topic: 'Food',
+  },
+  {
+    id: 'word-abroad',
+    word: 'abroad',
+    partOfSpeech: 'adverb',
+    definition: 'in or to a foreign country',
+    pronunciation: '/əˈbrɔːd/',
+    difficulty: 3,
+    level: 5,
+    topic: 'Travel Experiences',
+  },
+  {
+    id: 'word-memorable',
+    word: 'memorable',
+    partOfSpeech: 'adjective',
+    definition: 'worth remembering; not easily forgotten',
+    pronunciation: '/ˈmemərəbəl/',
+    difficulty: 4,
+    level: 5,
+    topic: 'Travel Experiences',
+  },
+  {
+    id: 'word-agree',
+    word: 'agree',
+    partOfSpeech: 'verb',
+    definition: 'to have the same opinion as someone else',
+    pronunciation: '/əˈɡriː/',
+    difficulty: 2,
+    level: 5,
+    topic: 'Maintaining Conversation',
+  },
+  {
+    id: 'word-by-the-way',
+    word: 'by the way',
+    partOfSpeech: 'phrase',
+    definition: 'used to introduce a new, often unrelated, topic into a conversation',
+    pronunciation: '/baɪ ðə weɪ/',
+    difficulty: 2,
+    level: 5,
+    topic: 'Maintaining Conversation',
+  },
 ];
 
 export function vocabularyById(id: string): VocabularyItem | undefined {
@@ -611,6 +875,138 @@ export const phrases: Phrase[] = [
   { id: 'phrase-schedule-appointments', vocabularyItemId: 'word-schedule', text: 'Can we schedule a meeting?', meaning: '회의 일정을 잡을 수 있을까요?', contextId: 'ctx-appointments' },
   { id: 'phrase-schedule-job', vocabularyItemId: 'word-schedule', text: 'My schedule is really busy this week.', meaning: '이번 주 제 일정이 정말 바빠요.', contextId: 'ctx-job' },
   { id: 'phrase-schedule-dailyroutine', vocabularyItemId: 'word-schedule', text: "What's your schedule for tomorrow?", meaning: '내일 일정이 어떻게 되세요?', contextId: 'ctx-daily-routine' },
+
+  // --- Level 4 ---
+  // friend
+  { id: 'phrase-friend-friends', vocabularyItemId: 'word-friend', text: "He's my best friend.", meaning: '그는 제 가장 친한 친구예요.', contextId: 'ctx-friends' },
+  { id: 'phrase-friend-invitations', vocabularyItemId: 'word-friend', text: 'Can I bring a friend to the party?', meaning: '파티에 친구를 데려가도 될까요?', contextId: 'ctx-invitations' },
+  { id: 'phrase-friend-casual', vocabularyItemId: 'word-friend', text: "We've been friends since college.", meaning: '우리는 대학 때부터 친구예요.', contextId: 'ctx-casual' },
+
+  // invite
+  { id: 'phrase-invite-invitations', vocabularyItemId: 'word-invite', text: "I'd like to invite you to my party.", meaning: '제 파티에 초대하고 싶어요.', contextId: 'ctx-invitations' },
+  { id: 'phrase-invite-friends', vocabularyItemId: 'word-invite', text: 'Did you invite your friends?', meaning: '친구들 초대했어요?', contextId: 'ctx-friends' },
+  { id: 'phrase-invite-casual', vocabularyItemId: 'word-invite', text: 'Thanks for inviting me.', meaning: '초대해줘서 고마워요.', contextId: 'ctx-casual' },
+
+  // party
+  { id: 'phrase-party-invitations', vocabularyItemId: 'word-party', text: 'Are you coming to the party?', meaning: '파티에 오실 거예요?', contextId: 'ctx-invitations' },
+  { id: 'phrase-party-weekends', vocabularyItemId: 'word-party', text: "We're having a party this weekend.", meaning: '이번 주말에 파티를 열 거예요.', contextId: 'ctx-weekends' },
+  { id: 'phrase-party-casual', vocabularyItemId: 'word-party', text: 'The party was so much fun.', meaning: '파티가 정말 재밌었어요.', contextId: 'ctx-casual' },
+
+  // ask
+  { id: 'phrase-ask-requests', vocabularyItemId: 'word-ask', text: 'Can I ask you a favor?', meaning: '부탁 하나 해도 될까요?', contextId: 'ctx-requests' },
+  { id: 'phrase-ask-feelings', vocabularyItemId: 'word-ask', text: "Can I ask how you're feeling?", meaning: '기분이 어떤지 물어봐도 될까요?', contextId: 'ctx-feelings' },
+  { id: 'phrase-ask-casual', vocabularyItemId: 'word-ask', text: 'She asked me a question.', meaning: '그녀가 저에게 질문을 했어요.', contextId: 'ctx-casual' },
+
+  // favor
+  { id: 'phrase-favor-requests', vocabularyItemId: 'word-favor', text: 'Could you do me a favor?', meaning: '부탁 하나 들어주시겠어요?', contextId: 'ctx-requests' },
+  { id: 'phrase-favor-friends', vocabularyItemId: 'word-favor', text: 'Friends help each other with favors.', meaning: '친구들은 서로 부탁을 들어줘요.', contextId: 'ctx-friends' },
+  { id: 'phrase-favor-casual', vocabularyItemId: 'word-favor', text: 'I owe you a favor.', meaning: '신세 졌네요.', contextId: 'ctx-casual' },
+
+  // apologize
+  { id: 'phrase-apologize-apologies', vocabularyItemId: 'word-apologize', text: 'I want to apologize for yesterday.', meaning: '어제 일에 대해 사과하고 싶어요.', contextId: 'ctx-apologies' },
+  { id: 'phrase-apologize-requests', vocabularyItemId: 'word-apologize', text: 'I apologize for asking so late.', meaning: '늦게 부탁드려서 죄송해요.', contextId: 'ctx-requests' },
+  { id: 'phrase-apologize-casual', vocabularyItemId: 'word-apologize', text: 'He apologized right away.', meaning: '그는 바로 사과했어요.', contextId: 'ctx-casual' },
+
+  // mistake
+  { id: 'phrase-mistake-apologies', vocabularyItemId: 'word-mistake', text: 'I made a mistake.', meaning: '제가 실수했어요.', contextId: 'ctx-apologies' },
+  { id: 'phrase-mistake-experiences', vocabularyItemId: 'word-mistake', text: 'It was an honest mistake.', meaning: '그건 정말 실수였어요.', contextId: 'ctx-experiences' },
+  { id: 'phrase-mistake-casual', vocabularyItemId: 'word-mistake', text: 'Everyone makes mistakes.', meaning: '누구나 실수해요.', contextId: 'ctx-casual' },
+
+  // feel
+  { id: 'phrase-feel-feelings', vocabularyItemId: 'word-feel', text: 'How do you feel today?', meaning: '오늘 기분이 어때요?', contextId: 'ctx-feelings' },
+  { id: 'phrase-feel-experiences', vocabularyItemId: 'word-feel', text: 'How did that make you feel?', meaning: '그게 어떤 기분이 들게 했어요?', contextId: 'ctx-experiences' },
+  { id: 'phrase-feel-casual', vocabularyItemId: 'word-feel', text: 'I feel a little tired.', meaning: '조금 피곤한 것 같아요.', contextId: 'ctx-casual' },
+
+  // excited
+  { id: 'phrase-excited-feelings', vocabularyItemId: 'word-excited', text: "I'm so excited about the trip.", meaning: '여행 때문에 너무 신나요.', contextId: 'ctx-feelings' },
+  { id: 'phrase-excited-invitations', vocabularyItemId: 'word-excited', text: "I'm excited for your party!", meaning: '당신의 파티가 너무 기대돼요!', contextId: 'ctx-invitations' },
+  { id: 'phrase-excited-casual', vocabularyItemId: 'word-excited', text: 'She sounded really excited.', meaning: '그녀는 정말 신나 보였어요.', contextId: 'ctx-casual' },
+
+  // weekend
+  { id: 'phrase-weekend-weekends', vocabularyItemId: 'word-weekend', text: 'What did you do this weekend?', meaning: '이번 주말에 뭐 했어요?', contextId: 'ctx-weekends' },
+  { id: 'phrase-weekend-friends', vocabularyItemId: 'word-weekend', text: "Let's hang out with friends this weekend.", meaning: '이번 주말에 친구들이랑 놀아요.', contextId: 'ctx-friends' },
+  { id: 'phrase-weekend-casual', vocabularyItemId: 'word-weekend', text: 'Have a great weekend!', meaning: '좋은 주말 보내세요!', contextId: 'ctx-casual' },
+
+  // relax
+  { id: 'phrase-relax-weekends', vocabularyItemId: 'word-relax', text: 'I like to relax on weekends.', meaning: '저는 주말에 쉬는 걸 좋아해요.', contextId: 'ctx-weekends' },
+  { id: 'phrase-relax-feelings', vocabularyItemId: 'word-relax', text: 'This music helps me relax.', meaning: '이 음악을 들으면 마음이 편해져요.', contextId: 'ctx-feelings' },
+  { id: 'phrase-relax-casual', vocabularyItemId: 'word-relax', text: 'Just relax, everything will be fine.', meaning: '걱정 마세요, 다 잘 될 거예요.', contextId: 'ctx-casual' },
+
+  // experience
+  { id: 'phrase-experience-experiences', vocabularyItemId: 'word-experience', text: 'That was an amazing experience.', meaning: '정말 놀라운 경험이었어요.', contextId: 'ctx-experiences' },
+  { id: 'phrase-experience-feelings', vocabularyItemId: 'word-experience', text: 'It was a scary experience.', meaning: '무서운 경험이었어요.', contextId: 'ctx-feelings' },
+  { id: 'phrase-experience-casual', vocabularyItemId: 'word-experience', text: 'Do you have any work experience?', meaning: '관련 경력이 있으세요?', contextId: 'ctx-casual' },
+
+  // happen
+  { id: 'phrase-happen-experiences', vocabularyItemId: 'word-happen', text: 'What happened yesterday?', meaning: '어제 무슨 일이 있었어요?', contextId: 'ctx-experiences' },
+  { id: 'phrase-happen-apologies', vocabularyItemId: 'word-happen', text: "It won't happen again.", meaning: '다시는 그런 일 없을 거예요.', contextId: 'ctx-apologies' },
+  { id: 'phrase-happen-casual', vocabularyItemId: 'word-happen', text: 'These things happen sometimes.', meaning: '그런 일은 가끔 있어요.', contextId: 'ctx-casual' },
+
+  // --- Level 5 ---
+  // interesting
+  { id: 'phrase-interesting-interests', vocabularyItemId: 'word-interesting', text: 'That sounds interesting.', meaning: '그거 흥미롭네요.', contextId: 'ctx-interests' },
+  { id: 'phrase-interesting-smalltalk', vocabularyItemId: 'word-interesting', text: 'Tell me something interesting about your week.', meaning: '이번 주에 있었던 흥미로운 일 얘기해 주세요.', contextId: 'ctx-small-talk' },
+  { id: 'phrase-interesting-casual', vocabularyItemId: 'word-interesting', text: 'This book is really interesting.', meaning: '이 책 정말 흥미로워요.', contextId: 'ctx-casual' },
+
+  // curious
+  { id: 'phrase-curious-interests', vocabularyItemId: 'word-curious', text: "I'm curious about your culture.", meaning: '당신의 문화가 궁금해요.', contextId: 'ctx-interests' },
+  { id: 'phrase-curious-culture', vocabularyItemId: 'word-curious', text: "I'm curious how you celebrate that.", meaning: '그걸 어떻게 기념하는지 궁금해요.', contextId: 'ctx-culture' },
+  { id: 'phrase-curious-casual', vocabularyItemId: 'word-curious', text: "I'm just curious, that's all.", meaning: '그냥 궁금해서 그래요.', contextId: 'ctx-casual' },
+
+  // tradition
+  { id: 'phrase-tradition-culture', vocabularyItemId: 'word-tradition', text: "It's an old tradition here.", meaning: '여기의 오래된 전통이에요.', contextId: 'ctx-culture' },
+  { id: 'phrase-tradition-travel', vocabularyItemId: 'word-tradition', text: 'We learned about a local tradition.', meaning: '현지 전통에 대해 배웠어요.', contextId: 'ctx-travel-experiences' },
+  { id: 'phrase-tradition-casual', vocabularyItemId: 'word-tradition', text: 'My family has a fun tradition.', meaning: '저희 가족만의 재미있는 전통이 있어요.', contextId: 'ctx-casual' },
+
+  // custom
+  { id: 'phrase-custom-culture', vocabularyItemId: 'word-custom', text: "That's a local custom.", meaning: '그건 현지 관습이에요.', contextId: 'ctx-culture' },
+  { id: 'phrase-custom-travel', vocabularyItemId: 'word-custom', text: 'It’s a custom to remove your shoes here.', meaning: '여기선 신발을 벗는 게 관습이에요.', contextId: 'ctx-travel-experiences' },
+  { id: 'phrase-custom-casual', vocabularyItemId: 'word-custom', text: 'Every family has its own customs.', meaning: '가족마다 각자의 관습이 있어요.', contextId: 'ctx-casual' },
+
+  // genre
+  { id: 'phrase-genre-moviesmusic', vocabularyItemId: 'word-genre', text: 'What genre of movie do you like?', meaning: '어떤 장르의 영화를 좋아하세요?', contextId: 'ctx-movies-music' },
+  { id: 'phrase-genre-interests', vocabularyItemId: 'word-genre', text: 'My favorite genre is comedy.', meaning: '제가 좋아하는 장르는 코미디예요.', contextId: 'ctx-interests' },
+  { id: 'phrase-genre-casual', vocabularyItemId: 'word-genre', text: "I don't really have a favorite genre.", meaning: '저는 딱히 좋아하는 장르가 없어요.', contextId: 'ctx-casual' },
+
+  // actor
+  { id: 'phrase-actor-moviesmusic', vocabularyItemId: 'word-actor', text: "Who's your favorite actor?", meaning: '가장 좋아하는 배우가 누구예요?', contextId: 'ctx-movies-music' },
+  { id: 'phrase-actor-interests', vocabularyItemId: 'word-actor', text: 'That actor is in a lot of great films.', meaning: '그 배우는 좋은 영화에 많이 나와요.', contextId: 'ctx-interests' },
+  { id: 'phrase-actor-casual', vocabularyItemId: 'word-actor', text: 'He wants to become an actor.', meaning: '그는 배우가 되고 싶어해요.', contextId: 'ctx-casual' },
+
+  // song
+  { id: 'phrase-song-moviesmusic', vocabularyItemId: 'word-song', text: 'This song is so catchy.', meaning: '이 노래 정말 중독성 있어요.', contextId: 'ctx-movies-music' },
+  { id: 'phrase-song-interests', vocabularyItemId: 'word-song', text: 'What song are you listening to?', meaning: '무슨 노래 듣고 있어요?', contextId: 'ctx-interests' },
+  { id: 'phrase-song-casual', vocabularyItemId: 'word-song', text: 'That song reminds me of summer.', meaning: '그 노래를 들으면 여름이 생각나요.', contextId: 'ctx-casual' },
+
+  // delicious
+  { id: 'phrase-delicious-food', vocabularyItemId: 'word-delicious', text: 'This dish is delicious.', meaning: '이 음식 정말 맛있어요.', contextId: 'ctx-food' },
+  { id: 'phrase-delicious-travel', vocabularyItemId: 'word-delicious', text: 'The street food there was delicious.', meaning: '그곳 길거리 음식이 정말 맛있었어요.', contextId: 'ctx-travel-experiences' },
+  { id: 'phrase-delicious-casual', vocabularyItemId: 'word-delicious', text: 'Everything smells delicious.', meaning: '다 정말 맛있는 냄새가 나요.', contextId: 'ctx-casual' },
+
+  // spicy
+  { id: 'phrase-spicy-food', vocabularyItemId: 'word-spicy', text: 'Is this soup spicy?', meaning: '이 국 매워요?', contextId: 'ctx-food' },
+  { id: 'phrase-spicy-travel', vocabularyItemId: 'word-spicy', text: 'The local food was really spicy.', meaning: '현지 음식이 정말 매웠어요.', contextId: 'ctx-travel-experiences' },
+  { id: 'phrase-spicy-casual', vocabularyItemId: 'word-spicy', text: "I can't handle spicy food.", meaning: '저는 매운 음식을 잘 못 먹어요.', contextId: 'ctx-casual' },
+
+  // abroad
+  { id: 'phrase-abroad-travel', vocabularyItemId: 'word-abroad', text: 'Have you ever traveled abroad?', meaning: '해외여행 가본 적 있으세요?', contextId: 'ctx-travel-experiences' },
+  { id: 'phrase-abroad-smalltalk', vocabularyItemId: 'word-abroad', text: "I'd love to study abroad someday.", meaning: '언젠가 해외에서 공부하고 싶어요.', contextId: 'ctx-small-talk' },
+  { id: 'phrase-abroad-casual', vocabularyItemId: 'word-abroad', text: 'My sister lives abroad.', meaning: '제 여동생은 해외에 살아요.', contextId: 'ctx-casual' },
+
+  // memorable
+  { id: 'phrase-memorable-travel', vocabularyItemId: 'word-memorable', text: 'It was a memorable trip.', meaning: '정말 기억에 남는 여행이었어요.', contextId: 'ctx-travel-experiences' },
+  { id: 'phrase-memorable-culture', vocabularyItemId: 'word-memorable', text: 'That festival was memorable.', meaning: '그 축제는 기억에 남았어요.', contextId: 'ctx-culture' },
+  { id: 'phrase-memorable-casual', vocabularyItemId: 'word-memorable', text: 'Yesterday was a memorable day.', meaning: '어제는 기억에 남는 하루였어요.', contextId: 'ctx-casual' },
+
+  // agree
+  { id: 'phrase-agree-conversation', vocabularyItemId: 'word-agree', text: 'I totally agree with you.', meaning: '전적으로 동의해요.', contextId: 'ctx-conversation' },
+  { id: 'phrase-agree-smalltalk', vocabularyItemId: 'word-agree', text: 'Do you agree that the movie was great?', meaning: '그 영화가 좋았다는 데 동의하세요?', contextId: 'ctx-small-talk' },
+  { id: 'phrase-agree-casual', vocabularyItemId: 'word-agree', text: "I don't really agree with that.", meaning: '저는 그거에 별로 동의하지 않아요.', contextId: 'ctx-casual' },
+
+  // by the way
+  { id: 'phrase-bytheway-conversation', vocabularyItemId: 'word-by-the-way', text: 'By the way, have you seen that movie?', meaning: '그런데, 그 영화 보셨어요?', contextId: 'ctx-conversation' },
+  { id: 'phrase-bytheway-smalltalk', vocabularyItemId: 'word-by-the-way', text: "By the way, how's your family doing?", meaning: '그런데, 가족분들은 잘 지내세요?', contextId: 'ctx-small-talk' },
+  { id: 'phrase-bytheway-casual', vocabularyItemId: 'word-by-the-way', text: 'Oh, by the way, I forgot to tell you something.', meaning: '아, 그런데 깜빡하고 말 안 한 게 있어요.', contextId: 'ctx-casual' },
 ];
 
 export function phrasesForWord(vocabularyItemId: string): Phrase[] {

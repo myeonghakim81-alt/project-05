@@ -427,6 +427,220 @@ export const dialogues: DialogueScript[] = [
     ],
     naturalAlternatives: [{ pattern: /\bget up\b/i, suggestVocabularyId: 'word-wake-up' }],
   },
+
+  // --- Level 4 ---
+  {
+    id: 'dialogue-planning-a-party',
+    contextId: 'ctx-invitations',
+    title: 'Planning a party',
+    situation: "A friend is planning a party and talking to you about it.",
+    targetVocabularyIds: ['word-party', 'word-invite', 'word-friend', 'word-excited'],
+    turns: [
+      {
+        id: 'turn-1',
+        aiText: "Hey, I'm planning a party next Saturday.",
+        naturalWordIds: ['word-party'],
+        placeholder: "e.g. That sounds fun, who's coming to the party?",
+      },
+      {
+        id: 'turn-2',
+        aiText: 'Just a few people. Do you want to invite anyone?',
+        naturalWordIds: ['word-invite'],
+        placeholder: 'e.g. Sure, can I invite a friend?',
+      },
+      {
+        id: 'turn-3',
+        aiText: 'Of course! The more the merrier.',
+        naturalWordIds: ['word-friend'],
+        placeholder: 'e.g. Great, my friend would love it.',
+      },
+      {
+        id: 'turn-4',
+        aiText: "Awesome, it's going to be a great night!",
+        naturalWordIds: ['word-excited'],
+        placeholder: "e.g. I'm so excited already!",
+      },
+    ],
+    naturalAlternatives: [{ pattern: /\bcome to my\b/i, suggestVocabularyId: 'word-invite' }],
+  },
+  {
+    id: 'dialogue-asking-for-a-favor',
+    contextId: 'ctx-requests',
+    title: 'Asking for a favor',
+    situation: "You need to ask a coworker for help after making a mistake.",
+    targetVocabularyIds: ['word-ask', 'word-favor', 'word-mistake', 'word-apologize'],
+    turns: [
+      {
+        id: 'turn-1',
+        aiText: 'Hey, is now a good time to talk?',
+        naturalWordIds: ['word-ask'],
+        placeholder: 'e.g. Sure, can I ask you something?',
+      },
+      {
+        id: 'turn-2',
+        aiText: "Of course, what's up?",
+        naturalWordIds: ['word-favor'],
+        placeholder: 'e.g. Could you do me a favor?',
+      },
+      {
+        id: 'turn-3',
+        aiText: 'Sure thing. What do you need?',
+        naturalWordIds: ['word-mistake'],
+        placeholder: 'e.g. I made a mistake on the report.',
+      },
+      {
+        id: 'turn-4',
+        aiText: "No worries, mistakes happen. I'll help you fix it.",
+        naturalWordIds: ['word-apologize'],
+        placeholder: 'e.g. Thanks, I really apologize for the trouble.',
+      },
+    ],
+    naturalAlternatives: [
+      { pattern: /\bsorry\b/i, suggestVocabularyId: 'word-apologize' },
+      { pattern: /\berror\b/i, suggestVocabularyId: 'word-mistake' },
+    ],
+  },
+  {
+    id: 'dialogue-catching-up-weekend',
+    contextId: 'ctx-weekends',
+    title: 'Catching up about the weekend',
+    situation: "A friend asks how your weekend went.",
+    targetVocabularyIds: ['word-weekend', 'word-relax', 'word-happen', 'word-feel', 'word-experience'],
+    turns: [
+      {
+        id: 'turn-1',
+        aiText: 'Hey! How was your weekend?',
+        naturalWordIds: ['word-weekend'],
+        placeholder: 'e.g. My weekend was great, thanks!',
+      },
+      {
+        id: 'turn-2',
+        aiText: 'Nice, did you get to relax at all?',
+        naturalWordIds: ['word-relax'],
+        placeholder: 'e.g. Yes, I relaxed at home most of the time.',
+      },
+      {
+        id: 'turn-3',
+        aiText: 'Sounds peaceful. Anything interesting happen?',
+        naturalWordIds: ['word-happen'],
+        placeholder: 'e.g. Actually, something funny happened.',
+      },
+      {
+        id: 'turn-4',
+        aiText: 'Oh really? Tell me more, how did it feel?',
+        naturalWordIds: ['word-feel', 'word-experience'],
+        placeholder: 'e.g. It was a strange experience, but I feel good about it now.',
+      },
+    ],
+    naturalAlternatives: [{ pattern: /\bchill(ed)?\b/i, suggestVocabularyId: 'word-relax' }],
+  },
+
+  // --- Level 5 ---
+  {
+    id: 'dialogue-party-small-talk',
+    contextId: 'ctx-small-talk',
+    title: 'Small talk at a party',
+    situation: "You're chatting with someone you just met at a party.",
+    targetVocabularyIds: ['word-interesting', 'word-curious', 'word-agree', 'word-by-the-way'],
+    turns: [
+      {
+        id: 'turn-1',
+        aiText: 'So, what do you do for fun?',
+        naturalWordIds: ['word-interesting'],
+        placeholder: 'e.g. I do something pretty interesting actually.',
+      },
+      {
+        id: 'turn-2',
+        aiText: "Oh really? Tell me more, I'm curious.",
+        naturalWordIds: ['word-curious'],
+        placeholder: "e.g. Sure! I'm curious about your hobbies too.",
+      },
+      {
+        id: 'turn-3',
+        aiText: "That sounds like a lot of fun — I'd agree it's a great hobby.",
+        naturalWordIds: ['word-agree'],
+        placeholder: 'e.g. Yeah, I totally agree.',
+      },
+      {
+        id: 'turn-4',
+        aiText: 'By the way, are you going to the concert this weekend?',
+        naturalWordIds: ['word-by-the-way'],
+        placeholder: "e.g. By the way, I heard it's sold out.",
+      },
+    ],
+    naturalAlternatives: [{ pattern: /\bI'?d love to know\b/i, suggestVocabularyId: 'word-curious' }],
+  },
+  {
+    id: 'dialogue-movies-and-food',
+    contextId: 'ctx-movies-music',
+    title: 'Talking about movies and food',
+    situation: "You and a friend are chatting about movies before deciding where to eat.",
+    targetVocabularyIds: ['word-genre', 'word-actor', 'word-song', 'word-delicious'],
+    turns: [
+      {
+        id: 'turn-1',
+        aiText: 'Do you watch a lot of movies? What genre do you like?',
+        naturalWordIds: ['word-genre'],
+        placeholder: 'e.g. I really like the comedy genre.',
+      },
+      {
+        id: 'turn-2',
+        aiText: "Nice, who's your favorite actor?",
+        naturalWordIds: ['word-actor'],
+        placeholder: 'e.g. My favorite actor is ...',
+      },
+      {
+        id: 'turn-3',
+        aiText: 'Great choice! Have you heard the new song from that movie?',
+        naturalWordIds: ['word-song'],
+        placeholder: 'e.g. Yes, that song is amazing.',
+      },
+      {
+        id: 'turn-4',
+        aiText: 'I know, right? Anyway, want to grab something delicious to eat after?',
+        naturalWordIds: ['word-delicious'],
+        placeholder: 'e.g. Sure, I know a place with delicious food.',
+      },
+    ],
+    naturalAlternatives: [{ pattern: /\btasty\b/i, suggestVocabularyId: 'word-delicious' }],
+  },
+  {
+    id: 'dialogue-travel-stories',
+    contextId: 'ctx-travel-experiences',
+    title: 'Sharing travel stories',
+    situation: "A friend is asking about a trip you took abroad.",
+    targetVocabularyIds: ['word-abroad', 'word-memorable', 'word-tradition', 'word-custom', 'word-spicy'],
+    turns: [
+      {
+        id: 'turn-1',
+        aiText: 'Have you ever traveled abroad?',
+        naturalWordIds: ['word-abroad'],
+        placeholder: 'e.g. Yes, I traveled abroad last year.',
+      },
+      {
+        id: 'turn-2',
+        aiText: 'Nice, what was the most memorable part?',
+        naturalWordIds: ['word-memorable'],
+        placeholder: 'e.g. The most memorable part was the festival.',
+      },
+      {
+        id: 'turn-3',
+        aiText: 'That sounds amazing — did you learn about any local traditions or customs?',
+        naturalWordIds: ['word-tradition', 'word-custom'],
+        placeholder: 'e.g. Yes, there was an interesting tradition.',
+      },
+      {
+        id: 'turn-4',
+        aiText: 'Cool! How was the food, was it spicy?',
+        naturalWordIds: ['word-spicy'],
+        placeholder: 'e.g. It was really spicy but delicious.',
+      },
+    ],
+    naturalAlternatives: [
+      { pattern: /\boverseas\b/i, suggestVocabularyId: 'word-abroad' },
+      { pattern: /\bhot\b/i, suggestVocabularyId: 'word-spicy' },
+    ],
+  },
 ];
 
 export function dialogueById(id: string): DialogueScript | undefined {
