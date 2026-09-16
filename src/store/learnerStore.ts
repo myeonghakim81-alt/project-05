@@ -35,13 +35,20 @@ export const useLearnerStore = create<LearnerStoreState>((set, get) => ({
   reviewQueue: [],
 
   load: async () => {
-    const [list, queue] = await Promise.all([
-      learnerRepository.listLearnerVocabulary(),
-      learnerRepository.listReviewQueue(),
-    ]);
-    const entries: Record<string, LearnerVocabulary> = {};
-    for (const e of list) entries[e.vocabularyItemId] = e;
-    set({ entries, reviewQueue: queue, loaded: true });
+    try {
+      const [list, queue] = await Promise.all([
+        learnerRepository.listLearnerVocabulary(),
+        learnerRepository.listReviewQueue(),
+      ]);
+      const entries: Record<string, LearnerVocabulary> = {};
+      for (const e of list) entries[e.vocabularyItemId] = e;
+      set({ entries, reviewQueue: queue, loaded: true });
+    } catch (error) {
+      // A misconfigured or unreachable backend must not hang the app on the
+      // loading screen forever — start from empty state instead.
+      console.error('Failed to load learner data, starting from empty state:', error);
+      set({ entries: {}, reviewQueue: [], loaded: true });
+    }
   },
 
   getOrCreate: (vocabularyItemId) => {
