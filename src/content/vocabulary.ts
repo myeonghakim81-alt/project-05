@@ -70,7 +70,7 @@ export const vocabulary: VocabularyItem[] = [
     definition: 'a card or object used to open a lock, such as a hotel room door',
     pronunciation: '/kiː/',
     difficulty: 1,
-    level: 1,
+    level: 2,
     topic: 'Hotel',
   },
   {
@@ -120,7 +120,7 @@ export const vocabulary: VocabularyItem[] = [
     definition: 'a piece of paper or digital pass that shows you have paid to travel or enter somewhere',
     pronunciation: '/ˈtɪkɪt/',
     difficulty: 2,
-    level: 1,
+    level: 2,
     topic: 'Transportation',
   },
   {

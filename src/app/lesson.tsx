@@ -7,9 +7,9 @@ import { SkillBar } from '@/components/skill-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { contextById, contexts } from '@/content/contexts';
+import { contextById } from '@/content/contexts';
 import { dialogueForWord } from '@/content/dialogues';
-import { phrasesForWord, vocabulary, vocabularyById } from '@/content/vocabulary';
+import { phrases as allPhrases, phrasesForWord, vocabulary, vocabularyById } from '@/content/vocabulary';
 import { analyzeConversation } from '@/lib/conversationAnalysis';
 import {
   analyzeConversationWithGemini,
@@ -74,6 +74,22 @@ export default function Lesson() {
   const [listenIndex, setListenIndex] = useState(0);
   const [listenCorrect, setListenCorrect] = useState(0);
   const [listenAnswered, setListenAnswered] = useState<string | null>(null);
+  // A fixed 3-way "which meaning did you hear?" choice — the correct
+  // translation plus two unrelated distractors — instead of picking the
+  // right category out of every category in the content set. Categories
+  // like "casual" legitimately overlap with "hotel"/"travel"/etc., so
+  // asking learners to pick one exact category doesn't have a clean right
+  // answer and only gets more confusing as more contexts are added.
+  const listenChoices = useMemo(() => {
+    const current = phrases[listenIndex];
+    if (!current) return [];
+    const distractors = uniqueByMeaning(allPhrases.filter((p) => p.vocabularyItemId !== word.id && p.meaning !== current.meaning)).slice(0, 2);
+    return shuffle([
+      { id: 'correct', meaning: current.meaning, correct: true },
+      ...distractors.map((d, i) => ({ id: `distractor-${i}`, meaning: d.meaning, correct: false })),
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listenIndex, phrases, word.id]);
 
   // --- Shadow step state ---
   const shadowPhrases = phrases.slice(0, 2);
@@ -122,10 +138,9 @@ export default function Lesson() {
     goToStep('listen');
   }
 
-  async function answerListen(contextId: string) {
+  async function answerListen(choiceId: string, correct: boolean) {
     if (listenAnswered) return;
-    setListenAnswered(contextId);
-    const correct = contextId === phrases[listenIndex].contextId;
+    setListenAnswered(choiceId);
     if (correct) setListenCorrect((c) => c + 1);
   }
 
@@ -348,7 +363,7 @@ export default function Lesson() {
                 어느 상황일까요?
               </ThemedText>
               <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-                아래 버튼을 눌러 문장을 듣고, 이 문장이 어울리는 상황을 골라보세요.
+                아래 버튼을 눌러 문장을 듣고, 무슨 뜻인지 맞는 해석을 골라보세요.
               </ThemedText>
               <PrimaryButton
                 label={isTtsSupported() ? '🔊 문장 듣기' : '🔊 문장 듣기 (이 브라우저는 TTS 미지원)'}
@@ -356,18 +371,17 @@ export default function Lesson() {
                 onPress={() => speak(phrases[listenIndex].text)}
               />
               <View style={{ height: Spacing.three }} />
-              {contexts.map((c) => {
+              {listenChoices.map((choice) => {
                 const isAnswered = listenAnswered !== null;
-                const isThisCorrect = c.id === phrases[listenIndex].contextId;
-                const isPicked = listenAnswered === c.id;
-                const variant: 'success' | 'danger' | 'secondary' = isAnswered && isThisCorrect ? 'success' : isPicked ? 'danger' : 'secondary';
+                const isPicked = listenAnswered === choice.id;
+                const variant: 'success' | 'danger' | 'secondary' = isAnswered && choice.correct ? 'success' : isPicked ? 'danger' : 'secondary';
                 return (
-                  <View key={c.id} style={{ marginBottom: 8 }}>
+                  <View key={choice.id} style={{ marginBottom: 8 }}>
                     <PrimaryButton
-                      label={`${c.category}${isAnswered && isThisCorrect ? '  정답' : isPicked ? '  오답' : ''}`}
+                      label={`${choice.meaning}${isAnswered && choice.correct ? '  정답' : isPicked ? '  오답' : ''}`}
                       variant={variant}
                       disabled={isAnswered}
-                      onPress={() => answerListen(c.id)}
+                      onPress={() => answerListen(choice.id, choice.correct)}
                     />
                   </View>
                 );
@@ -607,6 +621,15 @@ function buildHistory(aiTurnsArr: string[], learnerTurnsArr: string[]): Conversa
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function uniqueByMeaning<T extends { meaning: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.meaning)) return false;
+    seen.add(item.meaning);
+    return true;
+  });
 }
 
 // Combines how many target words the recognizer actually heard (a proxy for
