@@ -16,7 +16,7 @@ npm run android
 
 ## 현재 구현 범위
 
-- Level 1~2 단어 13개(Restaurant/Hotel/Cafe/Directions/Transportation), 각 단어마다 3~5개 문맥 문장 + 상황별 롤플레이 대화 4종
+- Level 1~3 단어 39개(Level 1: 인사·자기소개·기초 예절·시간/숫자, Level 2: Restaurant/Hotel/Cafe/Directions/Transportation, Level 3: 가족/직업/취미/취향/일과/날씨/약속), 각 단어마다 3개 문맥 문장 + 상황별 롤플레이 대화 11종
 - 전체 학습 루프: Learn → Listen(다양한 문맥 듣기) → Shadow(따라 말하기) → Express(문장 만들기) → Conversation(AI 롤플레이) → Analysis
 - 학습자별 9개 능력치 독립 추적 (Recognition/Listening/Recall/Expression/Conversation/Context Transfer/Automaticity/Pronunciation/Context Understanding)
 - Vocabulary-to-Speech Gap, Passive/Active/Automatic 어휘 수 대시보드, 단어별 학습 화면(대시보드 하단 전체 단어 목록)
