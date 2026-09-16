@@ -22,6 +22,7 @@ import { isSttSupported, isTtsSupported, speak, startListening } from '@/lib/spe
 import { CURRENT_USER_ID } from '@/lib/storage';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useTheme } from '@/hooks/use-theme';
+import type { PhraseDifficulty } from '@/types/domain';
 
 type Step = 'learn' | 'listen' | 'shadow' | 'express' | 'conversation' | 'analysis';
 
@@ -54,12 +55,17 @@ export default function Lesson() {
   // result on the server than on the client and break hydration.
   const [phrases, setPhrases] = useState(() => phrasesForWord(word.id));
   useEffect(() => {
-    setPhrases(shuffle(phrasesForWord(word.id)));
+    // Randomize within each difficulty tier, but always work through easy
+    // sentences before harder ones — a hard word's example sentences aren't
+    // all hard, and starting with the easiest one keeps the learner from
+    // fighting new vocabulary and difficult syntax at the same time.
+    setPhrases(sortByDifficulty(shuffle(phrasesForWord(word.id))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word.id]);
   const dialogue = useMemo(() => dialogueForWord(word.id, phrases[0]?.contextId), [word.id, phrases]);
+  const hasDialogue = Boolean(dialogue);
   const targetWords = useMemo(
-    () => dialogue.targetVocabularyIds.map((id) => vocabularyById(id)?.word ?? id),
+    () => dialogue?.targetVocabularyIds.map((id) => vocabularyById(id)?.word ?? id) ?? [],
     [dialogue],
   );
 
@@ -74,6 +80,7 @@ export default function Lesson() {
   const [listenIndex, setListenIndex] = useState(0);
   const [listenCorrect, setListenCorrect] = useState(0);
   const [listenAnswered, setListenAnswered] = useState<string | null>(null);
+  const [listenSkipped, setListenSkipped] = useState(0);
   // A fixed 3-way "which meaning did you hear?" choice — the correct
   // translation plus two unrelated distractors — instead of picking the
   // right category out of every category in the content set. Categories
@@ -122,7 +129,7 @@ export default function Lesson() {
   const [geminiNotice, setGeminiNotice] = useState<string | null>(null);
 
   const useDynamicConversation = isGeminiConfigured && !geminiFailed;
-  const totalTurns = useDynamicConversation ? DYNAMIC_MAX_TURNS : dialogue.turns.length;
+  const totalTurns = useDynamicConversation ? DYNAMIC_MAX_TURNS : (dialogue?.turns.length ?? 0);
 
   // --- Analysis result (computed once, when entering analysis step) ---
   const [analysisDone, setAnalysisDone] = useState(false);
@@ -150,9 +157,21 @@ export default function Lesson() {
       setListenAnswered(null);
       return;
     }
-    const accuracy = Math.round((listenCorrect / phrases.length) * 100);
-    await bumpTowards(word.id, { listening: accuracy, contextUnderstanding: accuracy }, 0.6);
+    const attempted = phrases.length - listenSkipped;
+    if (attempted > 0) {
+      const accuracy = Math.round((listenCorrect / attempted) * 100);
+      await bumpTowards(word.id, { listening: accuracy, contextUnderstanding: accuracy }, 0.6);
+    }
     goToStep('shadow');
+  }
+
+  // Listening isn't always possible (no sound, a noisy or quiet place) — a
+  // learner can skip a question rather than get stuck. Skipped questions are
+  // left out of the accuracy calculation above instead of counted wrong.
+  function skipListen() {
+    if (listenAnswered) return;
+    setListenSkipped((s) => s + 1);
+    setListenAnswered('__skipped__');
   }
 
   async function recordShadow() {
@@ -181,6 +200,19 @@ export default function Lesson() {
     goToStep('express');
   }
 
+  // Speaking isn't always possible (no mic, can't speak out loud right now)
+  // — skip without scoring this phrase rather than block progress.
+  function skipShadow() {
+    if (shadowIndex + 1 < shadowPhrases.length) {
+      setShadowIndex((i) => i + 1);
+      setShadowTranscript('');
+      setShadowConfidence(0);
+      setShadowUsedVoice(false);
+      return;
+    }
+    goToStep('express');
+  }
+
   async function submitExpress() {
     setExpressSubmitted(true);
     const usesWord = new RegExp(`\\b${word.word}(s|ed|ing)?\\b`, 'i').test(expressText);
@@ -190,6 +222,7 @@ export default function Lesson() {
   }
 
   async function beginConversation() {
+    if (!dialogue) return;
     setTurnIndex(0);
     setLearnerTurns([]);
     setAiTurns([]);
@@ -219,7 +252,15 @@ export default function Lesson() {
     goToStep('conversation');
   }
 
+  // Not every word has a matching roleplay dialogue (spec 10 says never force
+  // a word into a conversation it doesn't fit) — those words end the lesson
+  // here instead of forcing an unrelated roleplay.
+  function finishWithoutConversation() {
+    router.replace('/');
+  }
+
   async function submitConversationTurn() {
+    if (!dialogue) return;
     const reply = currentReply.trim();
     const nextTurns = [...learnerTurns, reply];
     setLearnerTurns(nextTurns);
@@ -253,6 +294,7 @@ export default function Lesson() {
   }
 
   async function finishConversation(nextTurns: string[]) {
+    if (!dialogue) return;
     const transcript = aiTurns
       .map((text, i) => [
         { speaker: 'ai' as const, text, atMs: i * 2 },
@@ -386,13 +428,17 @@ export default function Lesson() {
                   </View>
                 );
               })}
-              {listenAnswered && (
+              {listenAnswered ? (
                 <>
                   <ThemedText style={{ marginVertical: Spacing.two }}>
                     정답 문장: "{phrases[listenIndex].text}" — {phrases[listenIndex].meaning}
                   </ThemedText>
                   <PrimaryButton label="다음" onPress={nextListen} />
                 </>
+              ) : (
+                <ThemedText type="link" themeColor="textSecondary" onPress={skipListen} style={{ marginTop: Spacing.two }}>
+                  듣기 어려운 상황이신가요? 건너뛰기 →
+                </ThemedText>
               )}
             </View>
           )}
@@ -440,6 +486,9 @@ export default function Lesson() {
               )}
               <View style={{ height: Spacing.three }} />
               <PrimaryButton label="다음" onPress={nextShadow} disabled={!shadowTranscript} />
+              <ThemedText type="link" themeColor="textSecondary" onPress={skipShadow} style={{ marginTop: Spacing.two }}>
+                말하기 어려운 상황이신가요? 건너뛰기 →
+              </ThemedText>
             </View>
           )}
 
@@ -461,16 +510,23 @@ export default function Lesson() {
               />
               {!expressSubmitted ? (
                 <PrimaryButton label="제출" onPress={submitExpress} disabled={expressText.trim().length === 0} />
-              ) : (
+              ) : hasDialogue ? (
                 <>
                   <ThemedText style={{ marginVertical: Spacing.two }}>좋아요! 계속 진행할게요.</ThemedText>
                   <PrimaryButton label="AI 대화로 이동" onPress={goToConversation} />
+                </>
+              ) : (
+                <>
+                  <ThemedText style={{ marginVertical: Spacing.two }}>
+                    좋아요! 이 단어는 아직 준비된 롤플레이 대화가 없어서, 여기서 학습을 마칠게요.
+                  </ThemedText>
+                  <PrimaryButton label="학습 완료" onPress={finishWithoutConversation} />
                 </>
               )}
             </View>
           )}
 
-          {step === 'conversation' && (
+          {step === 'conversation' && dialogue && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
               <View style={styles.headerRow}>
                 <ThemedText type="subtitle" style={{ fontSize: 20 }}>
@@ -621,6 +677,12 @@ function buildHistory(aiTurnsArr: string[], learnerTurnsArr: string[]): Conversa
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+
+const DIFFICULTY_RANK: Record<PhraseDifficulty, number> = { easy: 0, medium: 1, hard: 2 };
+
+function sortByDifficulty<T extends { difficulty: PhraseDifficulty }>(items: T[]): T[] {
+  return [...items].sort((a, b) => DIFFICULTY_RANK[a.difficulty] - DIFFICULTY_RANK[b.difficulty]);
 }
 
 function uniqueByMeaning<T extends { meaning: string }>(items: T[]): T[] {

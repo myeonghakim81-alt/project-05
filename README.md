@@ -16,8 +16,8 @@ npm run android
 
 ## 현재 구현 범위
 
-- Level 1~5 단어 65개(Level 1: 인사·자기소개·기초 예절·시간/숫자, Level 2: Restaurant/Hotel/Cafe/Directions/Transportation, Level 3: 가족/직업/취미/취향/일과/날씨/약속, Level 4: 친구/초대/부탁/사과/감정/주말/경험, Level 5: 스몰토크/관심사/문화/영화·음악/음식/여행 경험/대화 이어가기), 각 단어마다 3개 문맥 문장 + 상황별 롤플레이 대화 17종
-- 전체 학습 루프: Learn → Listen(다양한 문맥 듣기) → Shadow(따라 말하기) → Express(문장 만들기) → Conversation(AI 롤플레이) → Analysis
+- 단어 144개: Level 1~5는 주제별로 직접 구성한 커리큘럼(인사/자기소개/기초 예절/시간·숫자, Restaurant/Hotel/Cafe/Directions/Transportation, 가족/직업/취미/취향/일과/날씨/약속, 친구/초대/부탁/사과/감정/주말/경험, 스몰토크/관심사/문화/영화·음악/음식/여행 경험/대화 이어가기)로 단어마다 문맥 문장 3개 이상 + 상황별 롤플레이 대화(총 17종)가 있음. Level 6부터는 실제 영어 단어 빈도 목록을 기준으로 고른 핵심 어휘(현재 79개)로, 단어량 확보가 우선이라 문장 2개 + 난이도 태그(easy/medium/hard)만 있고 전용 롤플레이 대화는 없음 — 대화 없는 단어는 Conversation 단계를 자동으로 건너뜀. 목표는 5,000단어 이상이며 이후 배치로 계속 추가 예정
+- 전체 학습 루프: Learn → Listen(다양한 문맥 듣기) → Shadow(따라 말하기) → Express(문장 만들기) → Conversation(AI 롤플레이, 없으면 자동 생략) → Analysis. Listen/Shadow 단계는 듣기·말하기가 어려운 상황이면 건너뛰기 가능
 - 학습자별 9개 능력치 독립 추적 (Recognition/Listening/Recall/Expression/Conversation/Context Transfer/Automaticity/Pronunciation/Context Understanding)
 - Vocabulary-to-Speech Gap, Passive/Active/Automatic 어휘 수 대시보드, 단어별 학습 화면(대시보드 하단 전체 단어 목록)
 - 약점 기반 복습 큐, 다음 학습 단어 자동 추천

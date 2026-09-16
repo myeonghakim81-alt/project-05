@@ -74,12 +74,20 @@ export interface ContextItem {
   description: string;
 }
 
+// Sentence difficulty is independent of the word's own difficulty (spec 8:
+// difficulty ramps up separately from vocabulary) — an easy word should still
+// get harder example sentences sometimes, and a hard word needs at least one
+// easy sentence so the learner isn't fighting new vocabulary and hard syntax
+// at the same time.
+export type PhraseDifficulty = 'easy' | 'medium' | 'hard';
+
 export interface Phrase {
   id: string;
   vocabularyItemId: string;
   text: string;
   meaning: string;
   contextId: string;
+  difficulty: PhraseDifficulty;
 }
 
 // A single line spoken by the AI in a scripted roleplay. Free-form LLM

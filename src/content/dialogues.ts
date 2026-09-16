@@ -648,11 +648,14 @@ export function dialogueById(id: string): DialogueScript | undefined {
 }
 
 // Picks the roleplay that best fits a word: prefer a dialogue that targets it
-// directly, otherwise one set in the same context as the word's first phrase,
-// otherwise the first dialogue available.
-export function dialogueForWord(vocabularyItemId: string, phraseContextId?: string): DialogueScript {
+// directly, otherwise one set in the same context as the word's first
+// phrase, otherwise none. Returning an unrelated dialogue used to be the
+// fallback here, which meant an unmatched word silently got a nonsensical
+// roleplay (e.g. a restaurant conversation for a train-station word) — no
+// dialogue is the honest answer, and the lesson screen skips the roleplay
+// step when this happens rather than force one that doesn't fit.
+export function dialogueForWord(vocabularyItemId: string, phraseContextId?: string): DialogueScript | undefined {
   const directMatch = dialogues.find((d) => d.targetVocabularyIds.includes(vocabularyItemId));
   if (directMatch) return directMatch;
-  const contextMatch = phraseContextId ? dialogues.find((d) => d.contextId === phraseContextId) : undefined;
-  return contextMatch ?? dialogues[0];
+  return phraseContextId ? dialogues.find((d) => d.contextId === phraseContextId) : undefined;
 }
