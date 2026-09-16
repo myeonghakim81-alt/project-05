@@ -12,10 +12,14 @@ export function PrimaryButton({
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'success' | 'danger';
 }) {
   const theme = useTheme();
   const isPrimary = variant === 'primary';
+  const background =
+    variant === 'success' ? theme.successBackground : variant === 'danger' ? theme.dangerBackground : isPrimary ? theme.primary : theme.backgroundElement;
+  const textColor = variant === 'success' ? 'success' : variant === 'danger' ? 'danger' : isPrimary ? 'primaryText' : 'text';
+  const borderColor = variant === 'success' ? theme.success : variant === 'danger' ? theme.danger : 'transparent';
 
   return (
     <Pressable
@@ -24,12 +28,14 @@ export function PrimaryButton({
       style={({ pressed }) => [
         styles.button,
         {
-          backgroundColor: isPrimary ? theme.primary : theme.backgroundElement,
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+          backgroundColor: background,
+          borderColor,
+          borderWidth: borderColor === 'transparent' ? 0 : 2,
+          opacity: disabled ? 0.6 : pressed ? 0.85 : 1,
         },
       ]}
     >
-      <ThemedText type="smallBold" themeColor={isPrimary ? 'primaryText' : 'text'}>
+      <ThemedText type="smallBold" themeColor={textColor}>
         {label}
       </ThemedText>
     </Pressable>

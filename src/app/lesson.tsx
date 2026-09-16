@@ -80,6 +80,12 @@ export default function Lesson() {
   const [shadowIndex, setShadowIndex] = useState(0);
   const [shadowTranscript, setShadowTranscript] = useState('');
   const [shadowListening, setShadowListening] = useState(false);
+  // Confidence comes from the browser/OS speech recognizer (0-1) and is only
+  // meaningful right after a recording — if the learner hand-edits the
+  // transcript afterwards, usedVoice flips off so we score on word match
+  // alone instead of stale confidence.
+  const [shadowConfidence, setShadowConfidence] = useState(0);
+  const [shadowUsedVoice, setShadowUsedVoice] = useState(false);
 
   // --- Express step state ---
   const [expressText, setExpressText] = useState('');
@@ -137,18 +143,24 @@ export default function Lesson() {
   async function recordShadow() {
     setShadowListening(true);
     setShadowTranscript('');
+    setShadowConfidence(0);
     const result = await startListening();
     setShadowTranscript(result.transcript);
+    setShadowConfidence(result.confidence);
+    setShadowUsedVoice(true);
     setShadowListening(false);
   }
 
   async function nextShadow() {
     const target = shadowPhrases[shadowIndex].text;
-    const similarity = wordOverlap(shadowTranscript, target);
-    await bumpTowards(word.id, { recall: similarity, pronunciation: similarity }, 0.5);
+    const recallScore = wordOverlap(shadowTranscript, target);
+    const pronunciationScore = estimatePronunciationScore(recallScore, shadowConfidence, shadowUsedVoice);
+    await bumpTowards(word.id, { recall: recallScore, pronunciation: pronunciationScore }, 0.5);
     if (shadowIndex + 1 < shadowPhrases.length) {
       setShadowIndex((i) => i + 1);
       setShadowTranscript('');
+      setShadowConfidence(0);
+      setShadowUsedVoice(false);
       return;
     }
     goToStep('express');
@@ -332,8 +344,11 @@ export default function Lesson() {
 
           {step === 'listen' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 22, marginBottom: Spacing.three }}>
+              <ThemedText type="subtitle" style={{ fontSize: 22, marginBottom: Spacing.two }}>
                 어느 상황일까요?
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
+                아래 버튼을 눌러 문장을 듣고, 이 문장이 어울리는 상황을 골라보세요.
               </ThemedText>
               <PrimaryButton
                 label={isTtsSupported() ? '🔊 문장 듣기' : '🔊 문장 듣기 (이 브라우저는 TTS 미지원)'}
@@ -345,11 +360,12 @@ export default function Lesson() {
                 const isAnswered = listenAnswered !== null;
                 const isThisCorrect = c.id === phrases[listenIndex].contextId;
                 const isPicked = listenAnswered === c.id;
+                const variant: 'success' | 'danger' | 'secondary' = isAnswered && isThisCorrect ? 'success' : isPicked ? 'danger' : 'secondary';
                 return (
                   <View key={c.id} style={{ marginBottom: 8 }}>
                     <PrimaryButton
-                      label={`${c.category}${isAnswered && isThisCorrect ? ' ✅' : isPicked ? ' ❌' : ''}`}
-                      variant="secondary"
+                      label={`${c.category}${isAnswered && isThisCorrect ? '  정답' : isPicked ? '  오답' : ''}`}
+                      variant={variant}
                       disabled={isAnswered}
                       onPress={() => answerListen(c.id)}
                     />
@@ -359,7 +375,7 @@ export default function Lesson() {
               {listenAnswered && (
                 <>
                   <ThemedText style={{ marginVertical: Spacing.two }}>
-                    "{phrases[listenIndex].text}" — {phrases[listenIndex].meaning}
+                    정답 문장: "{phrases[listenIndex].text}" — {phrases[listenIndex].meaning}
                   </ThemedText>
                   <PrimaryButton label="다음" onPress={nextListen} />
                 </>
@@ -390,8 +406,24 @@ export default function Lesson() {
                 placeholder="말한(또는 입력할) 문장을 여기서 확인·수정하세요"
                 placeholderTextColor={theme.textSecondary}
                 value={shadowTranscript}
-                onChangeText={setShadowTranscript}
+                onChangeText={(text) => {
+                  setShadowTranscript(text);
+                  setShadowUsedVoice(false);
+                }}
               />
+              {shadowUsedVoice && shadowTranscript && (
+                <ThemedText
+                  themeColor={
+                    estimatePronunciationScore(wordOverlap(shadowTranscript, shadowPhrases[shadowIndex].text), shadowConfidence, true) >= 70
+                      ? 'success'
+                      : 'warning'
+                  }
+                  style={{ marginBottom: Spacing.two }}
+                >
+                  🎯 발음·정확도 추정: {estimatePronunciationScore(wordOverlap(shadowTranscript, shadowPhrases[shadowIndex].text), shadowConfidence, true)}%
+                  (녹음 기반 참고용 점수예요)
+                </ThemedText>
+              )}
               <View style={{ height: Spacing.three }} />
               <PrimaryButton label="다음" onPress={nextShadow} disabled={!shadowTranscript} />
             </View>
@@ -575,6 +607,16 @@ function buildHistory(aiTurnsArr: string[], learnerTurnsArr: string[]): Conversa
 
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+
+// Combines how many target words the recognizer actually heard (a proxy for
+// pronunciation accuracy — mispronounced words are usually misheard as
+// different words) with the recognizer's own confidence in what it heard.
+// Manual text edits have no meaningful confidence, so they fall back to word
+// match alone.
+function estimatePronunciationScore(recallScore: number, confidence: number, usedVoice: boolean): number {
+  if (!usedVoice) return recallScore;
+  return Math.round(recallScore * 0.6 + confidence * 100 * 0.4);
 }
 
 function wordOverlap(a: string, b: string): number {
