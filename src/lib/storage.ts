@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { isSupabaseConfigured, supabase } from '@/lib/supabaseClient';
-import type { ConversationSession, LearnerVocabulary, VocabularyContextPerformance } from '@/types/domain';
+import type { ConversationSession, LearnerVocabulary, LevelProgress, VocabularyContextPerformance } from '@/types/domain';
 
 // No login flow yet (spec's MVP doesn't require multi-user auth) — every
 // learner on this device/browser shares this id.
@@ -20,6 +20,8 @@ export interface LearnerRepository {
   listReviewQueue(): Promise<string[]>; // vocabularyItemIds due for review
   addToReviewQueue(vocabularyItemId: string): Promise<void>;
   removeFromReviewQueue(vocabularyItemId: string): Promise<void>;
+  getLevelProgress(): Promise<LevelProgress | null>;
+  saveLevelProgress(progress: LevelProgress): Promise<void>;
 }
 
 const KEYS = {
@@ -27,6 +29,7 @@ const KEYS = {
   contextPerformance: 'contextPerformance/v1',
   conversationSessions: 'conversationSessions/v1',
   reviewQueue: 'reviewQueue/v1',
+  levelProgress: 'levelProgress/v1',
 };
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -100,6 +103,14 @@ export class LocalLearnerRepository implements LearnerRepository {
       KEYS.reviewQueue,
       queue.filter((id) => id !== vocabularyItemId),
     );
+  }
+
+  async getLevelProgress(): Promise<LevelProgress | null> {
+    return readJson<LevelProgress | null>(KEYS.levelProgress, null);
+  }
+
+  async saveLevelProgress(progress: LevelProgress): Promise<void> {
+    await writeJson(KEYS.levelProgress, progress);
   }
 }
 
@@ -249,6 +260,22 @@ export class SupabaseLearnerRepository implements LearnerRepository {
       .delete()
       .eq('user_id', CURRENT_USER_ID)
       .eq('vocabulary_item_id', vocabularyItemId);
+    if (error) throw error;
+  }
+
+  async getLevelProgress(): Promise<LevelProgress | null> {
+    const { data, error } = await supabase!.from('level_progress').select('*').eq('user_id', CURRENT_USER_ID).maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return { userId: data.user_id, currentLevel: data.current_level, placementCompleted: data.placement_completed };
+  }
+
+  async saveLevelProgress(progress: LevelProgress): Promise<void> {
+    const { error } = await supabase!.from('level_progress').upsert({
+      user_id: progress.userId,
+      current_level: progress.currentLevel,
+      placement_completed: progress.placementCompleted,
+    });
     if (error) throw error;
   }
 }

@@ -8,6 +8,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="lesson" />
+        <Stack.Screen name="placement-test" />
+        <Stack.Screen name="level-study" />
       </Stack>
     </ThemeProvider>
   );

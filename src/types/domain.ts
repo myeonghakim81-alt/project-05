@@ -157,6 +157,12 @@ export interface ConversationSession {
   overallScore: number | null;
 }
 
+export interface LevelProgress {
+  userId: string;
+  currentLevel: number;
+  placementCompleted: boolean;
+}
+
 export type NextActivity =
   | 'vocabulary_exposure'
   | 'contextual_listening'

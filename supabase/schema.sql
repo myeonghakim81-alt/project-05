@@ -51,10 +51,20 @@ create table if not exists review_queue (
   primary key (user_id, vocabulary_item_id)
 );
 
+-- Which curriculum level (spec 17, 1-10) the learner is currently placed at,
+-- and whether they've completed the initial placement test.
+create table if not exists level_progress (
+  user_id text primary key,
+  current_level integer not null default 1,
+  placement_completed boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
 alter table learner_vocabulary enable row level security;
 alter table vocabulary_context_performance enable row level security;
 alter table conversation_sessions enable row level security;
 alter table review_queue enable row level security;
+alter table level_progress enable row level security;
 
 create policy "prototype: allow all on learner_vocabulary" on learner_vocabulary
   for all using (true) with check (true);
@@ -63,4 +73,6 @@ create policy "prototype: allow all on vocabulary_context_performance" on vocabu
 create policy "prototype: allow all on conversation_sessions" on conversation_sessions
   for all using (true) with check (true);
 create policy "prototype: allow all on review_queue" on review_queue
+  for all using (true) with check (true);
+create policy "prototype: allow all on level_progress" on level_progress
   for all using (true) with check (true);

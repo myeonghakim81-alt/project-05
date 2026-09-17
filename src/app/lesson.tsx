@@ -18,11 +18,11 @@ import {
   type ConversationTurn,
   type GeminiConversationAnalysis,
 } from '@/lib/gemini';
+import { buildMeaningChoices, estimatePronunciationScore, scoreExpressSentence, shuffle, sortByDifficulty, wordOverlap } from '@/lib/scoring';
 import { isSttSupported, isTtsSupported, speak, startListening } from '@/lib/speech';
 import { CURRENT_USER_ID } from '@/lib/storage';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useTheme } from '@/hooks/use-theme';
-import type { PhraseDifficulty } from '@/types/domain';
 
 type Step = 'learn' | 'listen' | 'shadow' | 'express' | 'conversation' | 'analysis';
 
@@ -90,13 +90,9 @@ export default function Lesson() {
   const listenChoices = useMemo(() => {
     const current = phrases[listenIndex];
     if (!current) return [];
-    const distractors = uniqueByMeaning(allPhrases.filter((p) => p.vocabularyItemId !== word.id && p.meaning !== current.meaning)).slice(0, 2);
-    return shuffle([
-      { id: 'correct', meaning: current.meaning, correct: true },
-      ...distractors.map((d, i) => ({ id: `distractor-${i}`, meaning: d.meaning, correct: false })),
-    ]);
+    return buildMeaningChoices(current, allPhrases);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listenIndex, phrases, word.id]);
+  }, [listenIndex, phrases]);
 
   // --- Shadow step state ---
   const shadowPhrases = phrases.slice(0, 2);
@@ -215,10 +211,7 @@ export default function Lesson() {
 
   async function submitExpress() {
     setExpressSubmitted(true);
-    const usesWord = new RegExp(`\\b${word.word}(s|ed|ing)?\\b`, 'i').test(expressText);
-    const wordCount = expressText.trim().split(/\s+/).filter(Boolean).length;
-    const target = usesWord && wordCount >= 3 ? 85 : usesWord ? 60 : 25;
-    await bumpTowards(word.id, { expression: target }, 0.5);
+    await bumpTowards(word.id, { expression: scoreExpressSentence(word.word, expressText) }, 0.5);
   }
 
   async function beginConversation() {
@@ -673,49 +666,6 @@ function buildHistory(aiTurnsArr: string[], learnerTurnsArr: string[]): Conversa
     }
   }
   return history;
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5);
-}
-
-const DIFFICULTY_RANK: Record<PhraseDifficulty, number> = { easy: 0, medium: 1, hard: 2 };
-
-function sortByDifficulty<T extends { difficulty: PhraseDifficulty }>(items: T[]): T[] {
-  return [...items].sort((a, b) => DIFFICULTY_RANK[a.difficulty] - DIFFICULTY_RANK[b.difficulty]);
-}
-
-function uniqueByMeaning<T extends { meaning: string }>(items: T[]): T[] {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    if (seen.has(item.meaning)) return false;
-    seen.add(item.meaning);
-    return true;
-  });
-}
-
-// Combines how many target words the recognizer actually heard (a proxy for
-// pronunciation accuracy — mispronounced words are usually misheard as
-// different words) with the recognizer's own confidence in what it heard.
-// Manual text edits have no meaningful confidence, so they fall back to word
-// match alone.
-function estimatePronunciationScore(recallScore: number, confidence: number, usedVoice: boolean): number {
-  if (!usedVoice) return recallScore;
-  return Math.round(recallScore * 0.6 + confidence * 100 * 0.4);
-}
-
-function wordOverlap(a: string, b: string): number {
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[^a-z\s]/g, '')
-      .split(/\s+/)
-      .filter(Boolean);
-  const aWords = new Set(normalize(a));
-  const bWords = normalize(b);
-  if (bWords.length === 0) return 0;
-  const matched = bWords.filter((w) => aWords.has(w)).length;
-  return Math.round((matched / bWords.length) * 100);
 }
 
 const styles = StyleSheet.create({

@@ -6278,6 +6278,13 @@ export function vocabularyByLevel(level: number): VocabularyItem[] {
   return vocabulary.filter((v) => v.level === level);
 }
 
+// The highest curriculum level (spec 17 goes up to 10) that actually has
+// words yet — content is added level by level, so this is usually less
+// than 10 and the placement test/level-up logic needs to know where to stop.
+export function maxContentLevel(): number {
+  return vocabulary.reduce((max, v) => Math.max(max, v.level), 1);
+}
+
 // spec 7 — the same word is heard across many contexts, never just once.
 export const phrases: Phrase[] = [
   // --- Level 1 ---

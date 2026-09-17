@@ -36,3 +36,18 @@ export function vocabularyToSpeechGap(scores: {
 }
 
 export const SpacedReviewIntervalsDays = [1, 2, 4, 7, 14, 30];
+
+// spec 17: the curriculum runs Level 1-10. Content doesn't necessarily exist
+// yet for every level (see vocabularyByLevel) — this is the ceiling the
+// placement test and level-up logic aim at, not a claim that it's all built.
+export const MaxCurriculumLevel = 10;
+
+// How many words the placement test and each level-study attempt sample per
+// level, instead of testing every word in levels that have hundreds.
+export const PlacementSampleSize = 8;
+export const LevelStudySampleSize = 10;
+
+// A level score >= this advances to the next level; below LevelDropThreshold
+// drops back a level; the band between is a repeat of the same level.
+export const LevelPassThreshold = 90;
+export const LevelDropThreshold = 60;

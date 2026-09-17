@@ -6,23 +6,12 @@ import { PrimaryButton } from '@/components/primary-button';
 import { SkillBar } from '@/components/skill-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { vocabulary } from '@/content/vocabulary';
-import { nextActivityFor, pickRecommendedWord, summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
+import { vocabulary, vocabularyByLevel } from '@/content/vocabulary';
+import { summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
 import { useLearnerStore } from '@/store/learnerStore';
+import { useLevelStore } from '@/store/levelStore';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { MasteryState } from '@/types/domain';
-
-const ACTIVITY_LABEL: Record<string, string> = {
-  vocabulary_exposure: '새 단어 노출 학습',
-  contextual_listening: '문맥 속 듣기 연습',
-  retrieval_practice: '회상(retrieval) 연습',
-  sentence_generation: '문장 만들기 연습',
-  roleplay: 'AI 롤플레이 대화',
-  new_context: '새로운 상황에서 재사용',
-  delayed_free_conversation: '지연된 자유 대화',
-  increase_review_interval: '복습 간격 늘리기 (안정적)',
-};
 
 const SKILL_LABELS: [key: string, label: string][] = [
   ['recognition', 'Recognition'],
@@ -34,30 +23,25 @@ const SKILL_LABELS: [key: string, label: string][] = [
   ['automaticity', 'Automaticity'],
 ];
 
-const MASTERY_BADGE: Record<MasteryState, string> = {
-  EXPOSURE: '⬜️',
-  RECOGNITION: '🔹',
-  CONTEXTUAL: '🔹',
-  LISTENING_READY: '🔷',
-  RECALL_READY: '🔷',
-  EXPRESSIVE: '🟡',
-  CONVERSATIONAL: '🟡',
-  TRANSFERABLE: '🟢',
-  AUTOMATIC: '🟢',
-  MASTERED: '⭐️',
-};
-
 export default function Dashboard() {
   const router = useRouter();
   const theme = useTheme();
   const { loaded, entries, reviewQueue, load } = useLearnerStore();
+  const levelStore = useLevelStore();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    load().then(() => setReady(true));
+    Promise.all([load(), levelStore.load()]).then(() => setReady(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
-  if (!loaded || !ready) {
+  useEffect(() => {
+    if (ready && !levelStore.placementCompleted) {
+      router.replace('/placement-test');
+    }
+  }, [ready, levelStore.placementCompleted, router]);
+
+  if (!loaded || !ready || !levelStore.placementCompleted) {
     return (
       <ThemedView style={styles.centered}>
         <ThemedText>불러오는 중...</ThemedText>
@@ -68,12 +52,7 @@ export default function Dashboard() {
   const entryList = Object.values(entries);
   const summary = summarizeDashboard(entryList);
   const bottleneck = entryList.length > 0 ? weakestSkill(summary.scores) : 'recognition';
-
-  const recommendedWord = pickRecommendedWord(vocabulary, entries);
-  const recommendedEntry = entries[recommendedWord.id];
-  const nextActivity = nextActivityFor(recommendedEntry?.scores ?? summary.scores);
-
-  const topics = Array.from(new Set(vocabulary.map((v) => v.topic)));
+  const levelWordCount = vocabularyByLevel(levelStore.currentLevel).length;
 
   return (
     <ThemedView style={styles.flex}>
@@ -83,6 +62,21 @@ export default function Dashboard() {
           <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.four }}>
             Overall {summary.overall}
           </ThemedText>
+
+          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              현재 레벨
+            </ThemedText>
+            <ThemedText type="title" style={{ fontSize: 40, marginBottom: 4 }}>
+              Level {levelStore.currentLevel}
+            </ThemedText>
+            <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
+              단어 {levelWordCount}개 · 병목: {bottleneck}
+            </ThemedText>
+            <PrimaryButton label={`Level ${levelStore.currentLevel} 학습 시작`} onPress={() => router.push('/level-study')} />
+            <View style={{ height: 8 }} />
+            <PrimaryButton label="레벨 테스트 다시 보기" variant="secondary" onPress={() => router.push('/placement-test')} />
+          </View>
 
           <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
             {SKILL_LABELS.map(([key, label]) => (
@@ -101,22 +95,6 @@ export default function Dashboard() {
             <Row label="Vocabulary-to-Speech Gap" value={`${summary.vocabularyToSpeechGap} points`} />
           </View>
 
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              다음 추천 활동
-            </ThemedText>
-            <ThemedText style={{ marginBottom: 8 }}>
-              현재 병목: <ThemedText type="smallBold">{bottleneck}</ThemedText>
-            </ThemedText>
-            <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-              {recommendedWord.word} — {ACTIVITY_LABEL[nextActivity]}
-            </ThemedText>
-            <PrimaryButton
-              label={`레슨 시작하기 (${recommendedWord.word})`}
-              onPress={() => router.push({ pathname: '/lesson', params: { wordId: recommendedWord.id } })}
-            />
-          </View>
-
           {reviewQueue.length > 0 && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
@@ -125,43 +103,18 @@ export default function Dashboard() {
               {reviewQueue.map((id) => {
                 const word = vocabulary.find((v) => v.id === id);
                 return (
-                  <ThemedText key={id} style={{ marginBottom: 4 }}>
-                    • {word?.word ?? id}
-                  </ThemedText>
+                  <View key={id} style={styles.wordRow}>
+                    <ThemedText style={{ flex: 1 }}>• {word?.word ?? id}</ThemedText>
+                    <PrimaryButton
+                      label="복습"
+                      variant="secondary"
+                      onPress={() => router.push({ pathname: '/lesson', params: { wordId: id } })}
+                    />
+                  </View>
                 );
               })}
             </View>
           )}
-
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              전체 단어 ({vocabulary.length})
-            </ThemedText>
-            {topics.map((topic) => (
-              <View key={topic} style={{ marginBottom: Spacing.three }}>
-                <ThemedText type="smallBold" themeColor="textSecondary" style={{ marginBottom: 6 }}>
-                  {topic}
-                </ThemedText>
-                {vocabulary
-                  .filter((v) => v.topic === topic)
-                  .map((v) => {
-                    const entry = entries[v.id];
-                    return (
-                      <View key={v.id} style={styles.wordRow}>
-                        <ThemedText style={{ flex: 1 }}>
-                          {MASTERY_BADGE[entry?.masteryState ?? 'EXPOSURE']} {v.word}
-                        </ThemedText>
-                        <PrimaryButton
-                          label="학습"
-                          variant="secondary"
-                          onPress={() => router.push({ pathname: '/lesson', params: { wordId: v.id } })}
-                        />
-                      </View>
-                    );
-                  })}
-              </View>
-            ))}
-          </View>
         </View>
       </ScrollView>
     </ThemedView>

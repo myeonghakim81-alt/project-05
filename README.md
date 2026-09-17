@@ -17,10 +17,15 @@ npm run android
 ## 현재 구현 범위
 
 - 단어 622개: Level 2~5는 주제별로 직접 구성한 커리큘럼(Restaurant/Hotel/Cafe/Directions/Transportation, 가족/직업/취미/취향/일과/날씨/약속, 친구/초대/부탁/사과/감정/주말/경험, 스몰토크/관심사/문화/영화·음악/음식/여행 경험/대화 이어가기)으로 각각 20~21단어, 단어마다 문맥 문장 3개 이상 + 상황별 롤플레이 대화(총 17종, 새 단어는 기존 대화의 targetVocabularyIds에 연결)가 있음. Level 1은 원래 인사·자기소개·기초 예절·시간/숫자 13단어에서 숫자·색깔·요일·월·계절·가족·신체·동물·음식·직업·자연/날씨·생활용품·의류·장소·교통수단·기본 동사/형용사·의문사·대명사·감정·접속사·전치사 등 진짜 기초 단어를 계속 추가해 현재 461개(목표 1,000개, 진행 중). Level 6은 실제 영어 단어 빈도 목록 기준 핵심 어휘 79개. Level 1 확장분과 Level 6은 단어량 확보가 우선이라 문장 2개 + 난이도 태그(easy/medium/hard)만 있고 전용 롤플레이 대화는 없음 — 대화 없는 단어는 Conversation 단계를 자동으로 건너뜀. 최종 목표는 5,000단어 이상이며 이후 배치로 계속 추가 예정
-- 전체 학습 루프: Learn → Listen(다양한 문맥 듣기) → Shadow(따라 말하기) → Express(문장 만들기) → Conversation(AI 롤플레이, 없으면 자동 생략) → Analysis. Listen/Shadow 단계는 듣기·말하기가 어려운 상황이면 건너뛰기 가능
+- **레벨 테스트 → 레벨별 학습**으로 진입 구조가 바뀌었습니다. 대시보드에 전체 단어를 스크롤로 다 보여주던 방식은 제거했습니다.
+  - 첫 진입(또는 "레벨 테스트 다시 보기") 시 `/placement-test`: Level 1부터 각 레벨 단어를 무작위로 몇 개씩(`PlacementSampleSize`, 기본 8개) 뽑아 뜻 맞추기 퀴즈로 확인. 정답률 90% 이상이면 다음 레벨로 계속 올라가고, 90% 미만인 첫 레벨을 시작 레벨로 저장합니다.
+  - `/level-study`: 현재 레벨에서 단어를 무작위로 몇 개(`LevelStudySampleSize`, 기본 10개) 뽑아 **단어 노출 → 단어 테스트(뜻 맞추기) → 문장 테스트(문장 만들기) → 발음 테스트(녹음)** 를 화면 전환으로 진행. 발음 테스트는 기존 Shadow 단계와 동일한 로직(`estimatePronunciationScore`)을 그대로 쓰고, 문항을 건너뛰면 결과 계산 전에 "그래도 진행할지" 확인을 한 번 더 받습니다.
+  - 종합 점수(3개 테스트 평균, 발음을 건너뛰면 그 항목은 평균에서 제외) 기준 **90% 이상 통과 → 다음 레벨, 60~89% → 같은 레벨 반복, 60% 미만 → 이전 레벨로 하락** (`src/lib/policy.ts`의 `LevelPassThreshold`/`LevelDropThreshold`).
+  - 진행 상태(`currentLevel`/`placementCompleted`)는 학습 단어 점수와 마찬가지로 `LearnerRepository`(로컬/Supabase)에 저장됩니다.
+- 전체 학습 루프(단어별 심화 학습, 위 레벨 루프의 각 단계가 재사용하는 기반): Learn → Listen(다양한 문맥 듣기) → Shadow(따라 말하기) → Express(문장 만들기) → Conversation(AI 롤플레이, 없으면 자동 생략) → Analysis. Listen/Shadow 단계는 듣기·말하기가 어려운 상황이면 건너뛰기 가능
 - 학습자별 9개 능력치 독립 추적 (Recognition/Listening/Recall/Expression/Conversation/Context Transfer/Automaticity/Pronunciation/Context Understanding)
-- Vocabulary-to-Speech Gap, Passive/Active/Automatic 어휘 수 대시보드, 단어별 학습 화면(대시보드 하단 전체 단어 목록)
-- 약점 기반 복습 큐, 다음 학습 단어 자동 추천
+- Vocabulary-to-Speech Gap, Passive/Active/Automatic 어휘 수 대시보드
+- 약점 기반 복습 큐
 - AI 대화는 사전 작성된 시나리오 스크립트 + 목표 단어 사용 여부 분석 방식으로 동작 (기본값: 실시간 LLM 호출 없음 — 아래 "AI 대화 고도화(Gemini)" 참고)
 
 콘텐츠(단어/문구/상황/대화 스크립트)는 `src/content/`에 있습니다. 새 단어/문맥/대화를 추가해도 `src/lib/`의 학습 엔진 로직은 수정할 필요가 없습니다.
