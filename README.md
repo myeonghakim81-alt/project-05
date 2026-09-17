@@ -16,7 +16,7 @@ npm run android
 
 ## 현재 구현 범위
 
-- 단어 308개: Level 2~5는 주제별로 직접 구성한 커리큘럼(Restaurant/Hotel/Cafe/Directions/Transportation, 가족/직업/취미/취향/일과/날씨/약속, 친구/초대/부탁/사과/감정/주말/경험, 스몰토크/관심사/문화/영화·음악/음식/여행 경험/대화 이어가기)으로 단어마다 문맥 문장 3개 이상 + 상황별 롤플레이 대화(총 17종)가 있음. Level 1은 원래 인사·자기소개·기초 예절·시간/숫자 13단어에, 숫자/색깔/요일/가족/신체/동물/음식/기본 동사·형용사/생활용품/의류/장소/교통수단 등 진짜 기초 단어 164개를 추가로 확장(총 177개). Level 6은 실제 영어 단어 빈도 목록 기준 핵심 어휘 79개. Level 1 확장분과 Level 6은 단어량 확보가 우선이라 문장 2개 + 난이도 태그(easy/medium/hard)만 있고 전용 롤플레이 대화는 없음 — 대화 없는 단어는 Conversation 단계를 자동으로 건너뜀. 목표는 5,000단어 이상이며 이후 배치로 계속 추가 예정
+- 단어 438개: Level 2~5는 주제별로 직접 구성한 커리큘럼(Restaurant/Hotel/Cafe/Directions/Transportation, 가족/직업/취미/취향/일과/날씨/약속, 친구/초대/부탁/사과/감정/주말/경험, 스몰토크/관심사/문화/영화·음악/음식/여행 경험/대화 이어가기)으로 단어마다 문맥 문장 3개 이상 + 상황별 롤플레이 대화(총 17종)가 있음. Level 1은 원래 인사·자기소개·기초 예절·시간/숫자 13단어에서 숫자·색깔·요일·월·계절·가족·신체·동물·음식·직업·자연/날씨·생활용품·의류·장소·교통수단·기본 동사/형용사 등 진짜 기초 단어를 계속 추가해 현재 307개(목표 1,000개, 진행 중). Level 6은 실제 영어 단어 빈도 목록 기준 핵심 어휘 79개. Level 1 확장분과 Level 6은 단어량 확보가 우선이라 문장 2개 + 난이도 태그(easy/medium/hard)만 있고 전용 롤플레이 대화는 없음 — 대화 없는 단어는 Conversation 단계를 자동으로 건너뜀. 최종 목표는 5,000단어 이상이며 이후 배치로 계속 추가 예정
 - 전체 학습 루프: Learn → Listen(다양한 문맥 듣기) → Shadow(따라 말하기) → Express(문장 만들기) → Conversation(AI 롤플레이, 없으면 자동 생략) → Analysis. Listen/Shadow 단계는 듣기·말하기가 어려운 상황이면 건너뛰기 가능
 - 학습자별 9개 능력치 독립 추적 (Recognition/Listening/Recall/Expression/Conversation/Context Transfer/Automaticity/Pronunciation/Context Understanding)
 - Vocabulary-to-Speech Gap, Passive/Active/Automatic 어휘 수 대시보드, 단어별 학습 화면(대시보드 하단 전체 단어 목록)
