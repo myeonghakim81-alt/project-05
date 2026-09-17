@@ -9,7 +9,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-restaurant',
     title: 'Booking a table',
     situation: 'You are calling a restaurant to book a table for tonight.',
-    targetVocabularyIds: ['word-reservation', 'word-available', 'word-recommend', 'word-crowded', 'word-convenient'],
+    targetVocabularyIds: ['word-reservation', 'word-available', 'word-recommend', 'word-crowded', 'word-convenient', 'word-menu', 'word-bill'],
     turns: [
       {
         id: 'turn-1',
@@ -54,7 +54,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-hotel',
     title: 'Checking in at a hotel',
     situation: "You've just arrived at your hotel after a long trip and are checking in at the front desk.",
-    targetVocabularyIds: ['word-checkin', 'word-reservation', 'word-available', 'word-key'],
+    targetVocabularyIds: ['word-checkin', 'word-reservation', 'word-available', 'word-key', 'word-lobby', 'word-luggage'],
     turns: [
       {
         id: 'turn-1',
@@ -92,7 +92,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-cafe',
     title: 'Ordering at a cafe',
     situation: "You're at a busy cafe counter about to order a drink.",
-    targetVocabularyIds: ['word-order', 'word-recommend', 'word-available'],
+    targetVocabularyIds: ['word-order', 'word-recommend', 'word-available', 'word-refill'],
     turns: [
       {
         id: 'turn-1',
@@ -126,7 +126,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-directions',
     title: 'Asking for directions',
     situation: "You're a bit lost and stop a stranger on the street to ask for directions.",
-    targetVocabularyIds: ['word-nearby', 'word-straight', 'word-turn'],
+    targetVocabularyIds: ['word-nearby', 'word-straight', 'word-turn', 'word-corner'],
     turns: [
       {
         id: 'turn-1',
@@ -160,7 +160,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-transportation',
     title: 'Taking the train',
     situation: "You're at a train station trying to catch your train.",
-    targetVocabularyIds: ['word-ticket', 'word-platform'],
+    targetVocabularyIds: ['word-ticket', 'word-platform', 'word-fare', 'word-delay'],
     turns: [
       {
         id: 'turn-1',
@@ -312,7 +312,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-job',
     title: 'Getting to know a coworker',
     situation: "You're chatting with a coworker during a coffee break.",
-    targetVocabularyIds: ['word-job', 'word-work', 'word-family', 'word-appointment'],
+    targetVocabularyIds: ['word-job', 'word-work', 'word-family', 'word-appointment', 'word-relative', 'word-salary', 'word-colleague', 'word-cancel'],
     turns: [
       {
         id: 'turn-1',
@@ -355,7 +355,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-hobbies',
     title: 'Weekend small talk',
     situation: "A friend asks about your weekend plans.",
-    targetVocabularyIds: ['word-hobby', 'word-favorite', 'word-prefer', 'word-weather', 'word-rain'],
+    targetVocabularyIds: ['word-hobby', 'word-favorite', 'word-prefer', 'word-weather', 'word-rain', 'word-paint', 'word-dislike', 'word-forecast'],
     turns: [
       {
         id: 'turn-1',
@@ -398,7 +398,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-daily-routine',
     title: 'Planning the week',
     situation: "You're catching up with a friend about your week.",
-    targetVocabularyIds: ['word-usually', 'word-wake-up', 'word-schedule', 'word-brother'],
+    targetVocabularyIds: ['word-usually', 'word-wake-up', 'word-schedule', 'word-brother', 'word-routine'],
     turns: [
       {
         id: 'turn-1',
@@ -434,7 +434,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-invitations',
     title: 'Planning a party',
     situation: "A friend is planning a party and talking to you about it.",
-    targetVocabularyIds: ['word-party', 'word-invite', 'word-friend', 'word-excited'],
+    targetVocabularyIds: ['word-party', 'word-invite', 'word-friend', 'word-excited', 'word-buddy', 'word-celebrate'],
     turns: [
       {
         id: 'turn-1',
@@ -468,7 +468,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-requests',
     title: 'Asking for a favor',
     situation: "You need to ask a coworker for help after making a mistake.",
-    targetVocabularyIds: ['word-ask', 'word-favor', 'word-mistake', 'word-apologize'],
+    targetVocabularyIds: ['word-ask', 'word-favor', 'word-mistake', 'word-apologize', 'word-permission', 'word-forgive'],
     turns: [
       {
         id: 'turn-1',
@@ -505,7 +505,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-weekends',
     title: 'Catching up about the weekend',
     situation: "A friend asks how your weekend went.",
-    targetVocabularyIds: ['word-weekend', 'word-relax', 'word-happen', 'word-feel', 'word-experience'],
+    targetVocabularyIds: ['word-weekend', 'word-relax', 'word-happen', 'word-feel', 'word-experience', 'word-calm', 'word-errand', 'word-memory'],
     turns: [
       {
         id: 'turn-1',
@@ -541,7 +541,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-small-talk',
     title: 'Small talk at a party',
     situation: "You're chatting with someone you just met at a party.",
-    targetVocabularyIds: ['word-interesting', 'word-curious', 'word-agree', 'word-by-the-way'],
+    targetVocabularyIds: ['word-interesting', 'word-curious', 'word-agree', 'word-by-the-way', 'word-chat', 'word-fascinating', 'word-mention'],
     turns: [
       {
         id: 'turn-1',
@@ -575,7 +575,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-movies-music',
     title: 'Talking about movies and food',
     situation: "You and a friend are chatting about movies before deciding where to eat.",
-    targetVocabularyIds: ['word-genre', 'word-actor', 'word-song', 'word-delicious'],
+    targetVocabularyIds: ['word-genre', 'word-actor', 'word-song', 'word-delicious', 'word-concert', 'word-recipe'],
     turns: [
       {
         id: 'turn-1',
@@ -609,7 +609,7 @@ export const dialogues: DialogueScript[] = [
     contextId: 'ctx-travel-experiences',
     title: 'Sharing travel stories',
     situation: "A friend is asking about a trip you took abroad.",
-    targetVocabularyIds: ['word-abroad', 'word-memorable', 'word-tradition', 'word-custom', 'word-spicy'],
+    targetVocabularyIds: ['word-abroad', 'word-memorable', 'word-tradition', 'word-custom', 'word-spicy', 'word-festival', 'word-souvenir'],
     turns: [
       {
         id: 'turn-1',
