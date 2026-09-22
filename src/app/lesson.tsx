@@ -73,6 +73,7 @@ export default function Lesson() {
   const theme = useTheme();
   const bumpTowards = useLearnerStore((s) => s.bumpTowards);
   const recordConversationSession = useLearnerStore((s) => s.recordConversationSession);
+  const recordReviewOutcome = useLearnerStore((s) => s.recordReviewOutcome);
 
   const [step, setStep] = useState<Step>('learn');
 
@@ -248,7 +249,8 @@ export default function Lesson() {
   // Not every word has a matching roleplay dialogue (spec 10 says never force
   // a word into a conversation it doesn't fit) — those words end the lesson
   // here instead of forcing an unrelated roleplay.
-  function finishWithoutConversation() {
+  async function finishWithoutConversation() {
+    await recordReviewOutcome(word.id, true);
     router.replace('/');
   }
 
@@ -337,6 +339,7 @@ export default function Lesson() {
 
     setFinalAnalysis({ wordUsage, alternativeSuggestions });
     setAnalysisDone(true);
+    await recordReviewOutcome(word.id, true);
     goToStep('analysis');
   }
 

@@ -10,6 +10,7 @@ export default function RootLayout() {
         <Stack.Screen name="lesson" />
         <Stack.Screen name="placement-test" />
         <Stack.Screen name="level-study" />
+        <Stack.Screen name="review" />
       </Stack>
     </ThemeProvider>
   );

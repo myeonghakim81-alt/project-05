@@ -37,6 +37,10 @@ export function vocabularyToSpeechGap(scores: {
 
 export const SpacedReviewIntervalsDays = [1, 2, 4, 7, 14, 30];
 
+// How many due words a single /review session pulls in at once — reviews
+// are meant to be a quick daily pass, not another full level-study session.
+export const DailyReviewCap = 15;
+
 // spec 17: the curriculum runs Level 1-10. Content doesn't necessarily exist
 // yet for every level (see vocabularyByLevel) — this is the ceiling the
 // placement test and level-up logic aim at, not a claim that it's all built.

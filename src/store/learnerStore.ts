@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { deriveMasteryState, nudge } from '@/lib/masteryEngine';
 import { WeaknessThreshold } from '@/lib/policy';
+import { scheduleReview } from '@/lib/srs';
 import { CURRENT_USER_ID, learnerRepository } from '@/lib/storage';
 import { emptySkillScores, type ConversationSession, type LearnerVocabulary, type SkillScores } from '@/types/domain';
 
@@ -14,6 +15,10 @@ interface LearnerStoreState {
   applyScoreDelta: (vocabularyItemId: string, delta: Partial<SkillScores>) => Promise<LearnerVocabulary>;
   bumpTowards: (vocabularyItemId: string, targets: Partial<SkillScores>, weight?: number) => Promise<LearnerVocabulary>;
   recordConversationSession: (session: ConversationSession) => Promise<void>;
+  // One call per full review/learning encounter with a word (not per
+  // micro skill-score update) — advances or steps back its spaced-repetition
+  // schedule. See src/lib/srs.ts.
+  recordReviewOutcome: (vocabularyItemId: string, success: boolean) => Promise<LearnerVocabulary>;
 }
 
 function blankEntry(vocabularyItemId: string): LearnerVocabulary {
@@ -26,6 +31,7 @@ function blankEntry(vocabularyItemId: string): LearnerVocabulary {
     failureCount: 0,
     lastReviewedAt: null,
     nextReviewAt: null,
+    srsStage: 0,
   };
 }
 
@@ -95,5 +101,14 @@ export const useLearnerStore = create<LearnerStoreState>((set, get) => ({
 
   recordConversationSession: async (session) => {
     await learnerRepository.saveConversationSession(session);
+  },
+
+  recordReviewOutcome: async (vocabularyItemId, success) => {
+    const current = get().getOrCreate(vocabularyItemId);
+    const scheduled = scheduleReview(current, success);
+    const updated: LearnerVocabulary = { ...current, ...scheduled };
+    await learnerRepository.saveLearnerVocabulary(updated);
+    set((state) => ({ entries: { ...state.entries, [vocabularyItemId]: updated } }));
+    return updated;
   },
 }));

@@ -19,6 +19,7 @@ create table if not exists learner_vocabulary (
   failure_count integer not null default 0,
   last_reviewed_at timestamptz,
   next_review_at timestamptz,
+  srs_stage integer not null default 0,
   updated_at timestamptz not null default now(),
   primary key (user_id, vocabulary_item_id)
 );
@@ -59,6 +60,11 @@ create table if not exists level_progress (
   placement_completed boolean not null default false,
   updated_at timestamptz not null default now()
 );
+
+-- Re-running this file on a project that already has the old table (created
+-- before the srs_stage column existed) needs this to pick it up — `create
+-- table if not exists` above is a no-op once the table exists.
+alter table learner_vocabulary add column if not exists srs_stage integer not null default 0;
 
 alter table learner_vocabulary enable row level security;
 alter table vocabulary_context_performance enable row level security;

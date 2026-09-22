@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
+import { dueForReview } from '@/lib/srs';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -53,6 +54,7 @@ export default function Dashboard() {
   const summary = summarizeDashboard(entryList);
   const bottleneck = entryList.length > 0 ? weakestSkill(summary.scores) : 'recognition';
   const levelWordCount = vocabularyByLevel(levelStore.currentLevel).length;
+  const dueCount = dueForReview(entries).length;
 
   return (
     <ThemedView style={styles.flex}>
@@ -76,6 +78,22 @@ export default function Dashboard() {
             <PrimaryButton label={`Level ${levelStore.currentLevel} 학습 시작`} onPress={() => router.push('/level-study')} />
             <View style={{ height: 8 }} />
             <PrimaryButton label="레벨 테스트 다시 보기" variant="secondary" onPress={() => router.push('/placement-test')} />
+          </View>
+
+          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>
+              오늘의 복습
+            </ThemedText>
+            {dueCount > 0 ? (
+              <>
+                <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
+                  {dueCount}개 단어가 복습할 때가 됐어요.
+                </ThemedText>
+                <PrimaryButton label="복습 시작하기" onPress={() => router.push('/review')} />
+              </>
+            ) : (
+              <ThemedText themeColor="textSecondary">아직 복습할 단어가 없어요. 레벨 학습을 마치면 며칠 뒤 여기 다시 나타나요.</ThemedText>
+            )}
           </View>
 
           <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>

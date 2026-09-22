@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { contexts } from '@/content/contexts';
 import { maxContentLevel, phrasesForWord, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
-import { LevelDropThreshold, LevelPassThreshold, LevelStudySampleSize } from '@/lib/policy';
+import { LevelDropThreshold, LevelPassThreshold, LevelStudySampleSize, WeaknessThreshold } from '@/lib/policy';
 import {
   average,
   buildWordMeaningChoices,
@@ -57,6 +57,7 @@ export default function LevelStudy() {
   const level = useLevelStore((s) => s.currentLevel);
   const setLevel = useLevelStore((s) => s.setLevel);
   const bumpTowards = useLearnerStore((s) => s.bumpTowards);
+  const recordReviewOutcome = useLearnerStore((s) => s.recordReviewOutcome);
 
   const [sample, setSample] = useState<VocabularyItem[]>([]);
   const [phase, setPhase] = useState<Phase>('expose');
@@ -239,6 +240,12 @@ export default function LevelStudy() {
           },
           0.5,
         );
+        // Feeds the spaced-repetition schedule (src/lib/srs.ts) — a word
+        // this level-study pass went well for comes back for review later
+        // instead of only ever being touched once, on level-up.
+        const perWordScores = [wordTestResults[i] ? 100 : 0, sentenceScores[i], ...(pron !== null ? [pron] : [])];
+        const wordSucceeded = average(perWordScores) >= WeaknessThreshold;
+        await recordReviewOutcome(w.id, wordSucceeded);
       }
 
       const ceiling = maxContentLevel();

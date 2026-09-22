@@ -133,6 +133,13 @@ export interface LearnerVocabulary {
   failureCount: number;
   lastReviewedAt: string | null; // ISO timestamp
   nextReviewAt: string | null;
+  // Index into SpacedReviewIntervalsDays (spec 14/16 — expanding review
+  // gaps: 1/2/4/7/14/30 days). Advances one step on a successful spaced
+  // review, drops back one step on a failed one. Separate from
+  // reviewCount, which increments on every micro skill-score update
+  // (several times per lesson) and so can't double as a review-encounter
+  // counter.
+  srsStage: number;
 }
 
 export interface VocabularyContextPerformance {

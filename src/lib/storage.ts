@@ -128,6 +128,7 @@ interface LearnerVocabularyRow {
   failure_count: number;
   last_reviewed_at: string | null;
   next_review_at: string | null;
+  srs_stage: number;
 }
 
 function rowToLearnerVocabulary(row: LearnerVocabularyRow): LearnerVocabulary {
@@ -140,6 +141,7 @@ function rowToLearnerVocabulary(row: LearnerVocabularyRow): LearnerVocabulary {
     failureCount: row.failure_count,
     lastReviewedAt: row.last_reviewed_at,
     nextReviewAt: row.next_review_at,
+    srsStage: row.srs_stage ?? 0,
   };
 }
 
@@ -153,6 +155,7 @@ function learnerVocabularyToRow(entry: LearnerVocabulary): LearnerVocabularyRow 
     failure_count: entry.failureCount,
     last_reviewed_at: entry.lastReviewedAt,
     next_review_at: entry.nextReviewAt,
+    srs_stage: entry.srsStage,
   };
 }
 
