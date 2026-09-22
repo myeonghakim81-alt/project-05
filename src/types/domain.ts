@@ -89,6 +89,14 @@ export interface Phrase {
   meaning: string;
   contextId: string;
   difficulty: PhraseDifficulty;
+  // A situational question in English whose natural answer would use this
+  // phrase's target word — powers the level-study "answer in this
+  // situation" step (spec: speaking/writing practice framed as a real
+  // Q&A, not a bare "make a sentence" prompt). Optional because it's
+  // being back-filled across existing phrases gradually; screens that use
+  // it fall back to a generic prompt when it's missing, the same way a
+  // missing DialogueScript falls back to skipping Conversation.
+  question?: string;
 }
 
 // A single line spoken by the AI in a scripted roleplay. Free-form LLM

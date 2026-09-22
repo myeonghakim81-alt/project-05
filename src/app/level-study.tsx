@@ -105,6 +105,18 @@ export default function LevelStudy() {
     setWordTestAnswered(choiceId);
   }
 
+  // A correct answer auto-advances after a beat so learners can move fast
+  // without a tap for every word; a wrong answer still needs the manual
+  // "다음" button so they have time to read the correct choice.
+  useEffect(() => {
+    if (phase !== 'word-test' || !wordTestAnswered) return;
+    const correct = wordTestChoices.find((c) => c.id === wordTestAnswered)?.correct ?? false;
+    if (!correct) return;
+    const timer = setTimeout(() => nextWordTest(), 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wordTestAnswered]);
+
   function nextWordTest() {
     const correct = wordTestChoices.find((c) => c.id === wordTestAnswered)?.correct ?? false;
     const results = [...wordTestResults, correct];
@@ -374,9 +386,21 @@ export default function LevelStudy() {
                   상황: {situationContext.description}
                 </ThemedText>
               )}
-              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
-                이 상황에 맞게 "{currentWord.word}"를 사용해 말하거나 써보세요
-              </ThemedText>
+              {situationPhrase?.question ? (
+                <>
+                  <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.one }}>
+                    {situationPhrase.question}
+                  </ThemedText>
+                  <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(situationPhrase.question!)} />
+                  <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.two, marginBottom: Spacing.two }}>
+                    위 질문에 "{currentWord.word}"를 사용해서 대답해보세요
+                  </ThemedText>
+                </>
+              ) : (
+                <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
+                  이 상황에서 "{currentWord.word}"를 사용해 말하거나 써보세요
+                </ThemedText>
+              )}
               {isSttSupported() && !sentenceSubmitted && (
                 <>
                   <PrimaryButton label="🎙 말로 하기" variant="secondary" onPress={recordSentenceSpeech} />
