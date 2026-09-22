@@ -6,7 +6,8 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { maxContentLevel, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
+import { contexts } from '@/content/contexts';
+import { maxContentLevel, phrasesForWord, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { LevelDropThreshold, LevelPassThreshold, LevelStudySampleSize } from '@/lib/policy';
 import {
   average,
@@ -14,6 +15,7 @@ import {
   estimatePronunciationScore,
   scoreExpressSentence,
   shuffle,
+  sortByDifficulty,
   wordOverlap,
   type MeaningChoice,
 } from '@/lib/scoring';
@@ -23,7 +25,7 @@ import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
 import type { VocabularyItem } from '@/types/domain';
 
-type Phase = 'expose' | 'word-test' | 'sentence-test' | 'pronunciation-test' | 'confirm-skip' | 'result';
+type Phase = 'expose' | 'word-test' | 'pronunciation-test' | 'sentence-test' | 'confirm-skip' | 'result';
 
 const PHASE_LABEL: Record<Phase, string> = {
   expose: '단어 노출',
@@ -40,6 +42,13 @@ interface Outcome {
   sentenceScore: number;
   pronScore: number | null;
   verdict: 'pass' | 'repeat' | 'drop';
+}
+
+// Example sentences for a word, easiest first — used to pick what the
+// pronunciation step has the learner read aloud, and what "situation" the
+// sentence-production step frames itself around.
+function phrasesFor(word: VocabularyItem) {
+  return sortByDifficulty(phrasesForWord(word.id));
 }
 
 export default function LevelStudy() {
@@ -106,17 +115,30 @@ export default function LevelStudy() {
       prepareWordTestQuestion(sample[nextIndex]);
     } else {
       setIndex(0);
-      setSentenceScores([]);
-      setSentenceText('');
-      setSentenceSubmitted(false);
-      setPhase('sentence-test');
+      setPronunciationScores([]);
+      setPronunciationSkippedCount(0);
+      resetPronState();
+      setPhase('pronunciation-test');
     }
+  }
+
+  function beginSentenceTest() {
+    setIndex(0);
+    setSentenceScores([]);
+    setSentenceText('');
+    setSentenceSubmitted(false);
+    setPhase('sentence-test');
   }
 
   function submitSentence() {
     const score = scoreExpressSentence(sample[index].word, sentenceText);
     setSentenceScores((prev) => [...prev, score]);
     setSentenceSubmitted(true);
+  }
+
+  async function recordSentenceSpeech() {
+    const result = await startListening();
+    setSentenceText(result.transcript);
   }
 
   function nextSentence() {
@@ -126,11 +148,7 @@ export default function LevelStudy() {
     if (nextIndex < sample.length) {
       setIndex(nextIndex);
     } else {
-      setIndex(0);
-      setPronunciationScores([]);
-      setPronunciationSkippedCount(0);
-      resetPronState();
-      setPhase('pronunciation-test');
+      setPhase('result');
     }
   }
 
@@ -160,13 +178,16 @@ export default function LevelStudy() {
     const nextIndex = index + 1;
     if (nextIndex < sample.length) {
       setIndex(nextIndex);
+    } else if (totalSkips > 0) {
+      setPhase('confirm-skip');
     } else {
-      setPhase(totalSkips > 0 ? 'confirm-skip' : 'result');
+      beginSentenceTest();
     }
   }
 
   function submitPronunciation() {
-    const recallScore = wordOverlap(pronTranscript, sample[index].word);
+    const target = phrasesFor(sample[index])[0]?.text ?? sample[index].word;
+    const recallScore = wordOverlap(pronTranscript, target);
     const score = estimatePronunciationScore(recallScore, pronConfidence, pronUsedVoice);
     advancePronunciation(score, false);
   }
@@ -227,6 +248,10 @@ export default function LevelStudy() {
   }
 
   const currentWord = sample[index];
+  const wordPhrases = phrasesFor(currentWord);
+  const pronPhrase = wordPhrases[0];
+  const situationPhrase = wordPhrases[1] ?? wordPhrases[0];
+  const situationContext = situationPhrase ? contexts.find((c) => c.id === situationPhrase.contextId) : undefined;
 
   return (
     <ThemedView style={styles.flex}>
@@ -235,7 +260,7 @@ export default function LevelStudy() {
           <View style={styles.headerRow}>
             <ThemedText type="smallBold" themeColor="textSecondary">
               Level {level} · {PHASE_LABEL[phase]}
-              {phase !== 'expose' && phase !== 'result' && phase !== 'confirm-skip' ? ` (${index + 1}/${sample.length})` : ''}
+              {phase !== 'result' && phase !== 'confirm-skip' ? ` (${index + 1}/${sample.length})` : ''}
             </ThemedText>
             <ThemedText type="linkPrimary" onPress={() => router.replace('/')}>
               나가기
@@ -244,16 +269,24 @@ export default function LevelStudy() {
 
           {phase === 'expose' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 22, marginBottom: Spacing.two }}>
-                이번에 배울 단어 {sample.length}개
+              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
+                이번에 배울 단어
               </ThemedText>
-              {sample.map((w) => (
-                <View key={w.id} style={{ marginBottom: Spacing.three }}>
-                  <ThemedText type="smallBold">{w.word}</ThemedText>
-                  <ThemedText themeColor="textSecondary">{w.definition}</ThemedText>
-                </View>
-              ))}
-              <PrimaryButton label="테스트 시작하기" onPress={startWordTest} />
+              <ThemedText type="title" style={{ fontSize: 32, marginBottom: Spacing.one }}>
+                {currentWord.word}
+              </ThemedText>
+              <PrimaryButton
+                label={isTtsSupported() ? '🔊 발음 듣기' : '🔊 발음 듣기 (미지원 브라우저)'}
+                variant="secondary"
+                onPress={() => speak(currentWord.word)}
+              />
+              <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.three, marginBottom: Spacing.three }}>
+                {currentWord.meaning} · {currentWord.definition}
+              </ThemedText>
+              <PrimaryButton
+                label={index + 1 < sample.length ? '다음 단어' : '테스트 시작하기'}
+                onPress={() => (index + 1 < sample.length ? setIndex(index + 1) : startWordTest())}
+              />
             </View>
           )}
 
@@ -295,37 +328,16 @@ export default function LevelStudy() {
             </View>
           )}
 
-          {phase === 'sentence-test' && (
-            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
-                "{currentWord.word}"를 사용해 문장을 만들어보세요
-              </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-                placeholder="Write a sentence with the word..."
-                placeholderTextColor={theme.textSecondary}
-                value={sentenceText}
-                onChangeText={setSentenceText}
-                multiline
-                editable={!sentenceSubmitted}
-              />
-              {!sentenceSubmitted ? (
-                <PrimaryButton label="제출" onPress={submitSentence} disabled={sentenceText.trim().length === 0} />
-              ) : (
-                <PrimaryButton label="다음" onPress={nextSentence} />
-              )}
-            </View>
-          )}
-
           {phase === 'pronunciation-test' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 22, marginBottom: Spacing.two }}>
-                이 단어를 소리 내어 말해보세요
+              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
+                예문을 따라 읽으며 발음해보세요
               </ThemedText>
-              <ThemedText type="title" style={{ fontSize: 32, marginBottom: Spacing.three }}>
+              <ThemedText type="title" style={{ fontSize: 24, marginBottom: Spacing.one }}>
                 {currentWord.word}
               </ThemedText>
-              <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(currentWord.word)} />
+              <ThemedText style={{ marginBottom: Spacing.three }}>{pronPhrase?.text ?? currentWord.word}</ThemedText>
+              <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(pronPhrase?.text ?? currentWord.word)} />
               <View style={{ height: 8 }} />
               {isSttSupported() && (
                 <>
@@ -339,7 +351,7 @@ export default function LevelStudy() {
               )}
               <TextInput
                 style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-                placeholder="말한(또는 입력할) 단어를 여기서 확인·수정하세요"
+                placeholder="말한(또는 입력할) 문장을 여기서 확인·수정하세요"
                 placeholderTextColor={theme.textSecondary}
                 value={pronTranscript}
                 onChangeText={(text) => {
@@ -355,15 +367,48 @@ export default function LevelStudy() {
             </View>
           )}
 
+          {phase === 'sentence-test' && (
+            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              {situationContext && (
+                <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
+                  상황: {situationContext.description}
+                </ThemedText>
+              )}
+              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
+                이 상황에 맞게 "{currentWord.word}"를 사용해 말하거나 써보세요
+              </ThemedText>
+              {isSttSupported() && !sentenceSubmitted && (
+                <>
+                  <PrimaryButton label="🎙 말로 하기" variant="secondary" onPress={recordSentenceSpeech} />
+                  <View style={{ height: 8 }} />
+                </>
+              )}
+              <TextInput
+                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                placeholder="Write (or speak) a sentence with the word..."
+                placeholderTextColor={theme.textSecondary}
+                value={sentenceText}
+                onChangeText={setSentenceText}
+                multiline
+                editable={!sentenceSubmitted}
+              />
+              {!sentenceSubmitted ? (
+                <PrimaryButton label="제출" onPress={submitSentence} disabled={sentenceText.trim().length === 0} />
+              ) : (
+                <PrimaryButton label="다음" onPress={nextSentence} />
+              )}
+            </View>
+          )}
+
           {phase === 'confirm-skip' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
                 발음 테스트를 {pronunciationSkippedCount}개 건너뛰었어요
               </ThemedText>
               <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-                건너뛴 문항은 점수에서 제외하고 진행할 수 있어요. 그래도 결과를 계산해서 다음 단계로 갈까요?
+                건너뛴 문항은 점수에서 제외하고 진행할 수 있어요. 그래도 다음 단계(문장 테스트)로 넘어갈까요?
               </ThemedText>
-              <PrimaryButton label="네, 이대로 진행할게요" onPress={() => setPhase('result')} />
+              <PrimaryButton label="네, 이대로 진행할게요" onPress={beginSentenceTest} />
               <View style={{ height: 8 }} />
               <PrimaryButton label="아니요, 발음 테스트를 다시 할게요" variant="secondary" onPress={redoPronunciationFromScratch} />
             </View>
@@ -386,8 +431,8 @@ export default function LevelStudy() {
                         : `Level ${Math.max(1, level - 1)}부터 다시 다져볼게요.`}
                   </ThemedText>
                   <Row label="단어 테스트" value={`${outcome.wordScore}%`} />
-                  <Row label="문장 테스트" value={`${outcome.sentenceScore}%`} />
                   <Row label="발음 테스트" value={outcome.pronScore !== null ? `${outcome.pronScore}%` : '건너뜀'} />
+                  <Row label="문장 테스트" value={`${outcome.sentenceScore}%`} />
                   <View style={styles.divider} />
                   <Row label="종합 점수" value={`${outcome.overall}%`} />
                   <View style={{ height: Spacing.four }} />
