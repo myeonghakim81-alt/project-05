@@ -61,6 +61,7 @@ export interface VocabularyItem {
   word: string;
   partOfSpeech: string;
   definition: string;
+  meaning: string; // short Korean gloss for the word itself, e.g. "가다" for "go" (verb) — NOT a sentence
   pronunciation: string; // IPA or simplified respelling
   difficulty: number; // 1-10
   level: number; // curriculum level (spec 17), 1-10

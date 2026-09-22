@@ -6,11 +6,11 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { maxContentLevel, phrasesForWord, phrases as allPhrases, vocabularyByLevel } from '@/content/vocabulary';
+import { maxContentLevel, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { LevelDropThreshold, LevelPassThreshold, LevelStudySampleSize } from '@/lib/policy';
 import {
   average,
-  buildMeaningChoices,
+  buildWordMeaningChoices,
   estimatePronunciationScore,
   scoreExpressSentence,
   shuffle,
@@ -87,8 +87,7 @@ export default function LevelStudy() {
   }
 
   function prepareWordTestQuestion(word: VocabularyItem) {
-    const phrase = phrasesForWord(word.id)[0];
-    setWordTestChoices(buildMeaningChoices(phrase, allPhrases));
+    setWordTestChoices(buildWordMeaningChoices(word, vocabulary));
     setWordTestAnswered(null);
   }
 

@@ -6,9 +6,9 @@ import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { maxContentLevel, phrasesForWord, phrases as allPhrases, vocabularyByLevel } from '@/content/vocabulary';
+import { maxContentLevel, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { LevelPassThreshold, PlacementSampleSize } from '@/lib/policy';
-import { buildMeaningChoices, shuffle, type MeaningChoice } from '@/lib/scoring';
+import { buildWordMeaningChoices, shuffle, type MeaningChoice } from '@/lib/scoring';
 import { isTtsSupported, speak } from '@/lib/speech';
 import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
@@ -58,8 +58,7 @@ export default function PlacementTest() {
   }
 
   function prepareQuestion(word: VocabularyItem) {
-    const phrase = phrasesForWord(word.id)[0];
-    setChoices(buildMeaningChoices(phrase, allPhrases));
+    setChoices(buildWordMeaningChoices(word, vocabulary));
     setAnswered(null);
   }
 

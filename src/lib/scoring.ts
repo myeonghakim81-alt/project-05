@@ -1,4 +1,4 @@
-import type { Phrase, PhraseDifficulty } from '@/types/domain';
+import type { Phrase, PhraseDifficulty, VocabularyItem } from '@/types/domain';
 
 // Shared scoring/selection helpers used by both the per-word lesson screen
 // (lesson.tsx) and the level-test/level-study screens, so the two places
@@ -38,6 +38,20 @@ export function buildMeaningChoices(currentPhrase: Phrase, allPhrases: Phrase[])
   ).slice(0, 2);
   return shuffle([
     { id: 'correct', meaning: currentPhrase.meaning, correct: true },
+    ...distractors.map((d, i) => ({ id: `distractor-${i}`, meaning: d.meaning, correct: false })),
+  ]);
+}
+
+// Same idea as buildMeaningChoices but for testing word-level meaning (not
+// sentence meaning) — used by the placement test and level-study word-test
+// phase. See lesson.tsx's Listen step for why sentence-meaning quizzes stay
+// on buildMeaningChoices instead.
+export function buildWordMeaningChoices(currentWord: VocabularyItem, allWords: VocabularyItem[]): MeaningChoice[] {
+  const sameLevelPool = allWords.filter((w) => w.id !== currentWord.id && w.level === currentWord.level && w.meaning !== currentWord.meaning);
+  const pool = sameLevelPool.length >= 2 ? sameLevelPool : allWords.filter((w) => w.id !== currentWord.id && w.meaning !== currentWord.meaning);
+  const distractors = uniqueByMeaning(pool.map((w) => ({ meaning: w.meaning }))).slice(0, 2);
+  return shuffle([
+    { id: 'correct', meaning: currentWord.meaning, correct: true },
     ...distractors.map((d, i) => ({ id: `distractor-${i}`, meaning: d.meaning, correct: false })),
   ]);
 }
