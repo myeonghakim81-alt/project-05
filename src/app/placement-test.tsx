@@ -68,6 +68,18 @@ export default function PlacementTest() {
     if (isCorrect) setCorrect((c) => c + 1);
   }
 
+  // Same pattern as level-study.tsx: a correct pick auto-advances after a
+  // beat; a wrong one waits for the manual "다음" tap so there's time to see
+  // the correct choice highlighted.
+  useEffect(() => {
+    if (phase !== 'quiz' || !answered) return;
+    const isCorrect = choices.find((c) => c.id === answered)?.correct ?? false;
+    if (!isCorrect) return;
+    const timer = setTimeout(() => next(), 700);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answered]);
+
   function next() {
     const nextIndex = index + 1;
     if (nextIndex < sample.length) {
