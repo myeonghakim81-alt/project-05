@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   scrollContent: { alignItems: 'center', paddingVertical: Spacing.five },
   container: { width: '100%', maxWidth: MaxContentWidth, paddingHorizontal: Spacing.four },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.three },
-  card: { borderRadius: 16, padding: Spacing.four },
+  card: { borderRadius: 22, padding: Spacing.four },
   input: {
     borderWidth: 1,
     borderRadius: 10,

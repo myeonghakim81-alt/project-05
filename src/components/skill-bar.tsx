@@ -13,7 +13,7 @@ export function SkillBar({ label, value }: { label: string; value: number }) {
         <ThemedText type="small">{label}</ThemedText>
         <ThemedText type="smallBold">{value}</ThemedText>
       </View>
-      <View style={[styles.track, { backgroundColor: theme.backgroundElement }]}>
+      <View style={[styles.track, { backgroundColor: 'rgba(74,63,53,0.12)' }]}>
         <View style={[styles.fill, { width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: barColor }]} />
       </View>
     </View>

@@ -16,10 +16,14 @@ export function PrimaryButton({
 }) {
   const theme = useTheme();
   const isPrimary = variant === 'primary';
-  const background =
-    variant === 'success' ? theme.successBackground : variant === 'danger' ? theme.dangerBackground : isPrimary ? theme.primary : theme.backgroundElement;
+  const isSecondary = variant === 'secondary';
+  const background = variant === 'success' ? theme.successBackground : variant === 'danger' ? theme.dangerBackground : isPrimary ? theme.primary : '#FFFFFF';
   const textColor = variant === 'success' ? 'success' : variant === 'danger' ? 'danger' : isPrimary ? 'primaryText' : 'text';
-  const borderColor = variant === 'success' ? theme.success : variant === 'danger' ? theme.danger : 'transparent';
+  // Secondary buttons always sit on a card that can now be any pastel accent
+  // color (see AccentPalette), so they need their own visible border rather
+  // than "transparent" — otherwise a near-white button disappears into a
+  // near-white/pastel card.
+  const borderColor = variant === 'success' ? theme.success : variant === 'danger' ? theme.danger : isSecondary ? theme.border : 'transparent';
 
   return (
     <Pressable
@@ -46,7 +50,7 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: 'center',
   },
 });

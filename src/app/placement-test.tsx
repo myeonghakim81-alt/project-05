@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scrollContent: { alignItems: 'center', paddingVertical: Spacing.five },
   container: { width: '100%', maxWidth: MaxContentWidth, paddingHorizontal: Spacing.four },
-  card: { borderRadius: 16, padding: Spacing.four },
+  card: { borderRadius: 22, padding: Spacing.four },
   progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: Spacing.four },
   progressFill: { height: 6, borderRadius: 3 },
 });

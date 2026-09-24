@@ -7,25 +7,34 @@ import '@/global.css';
 
 import { Platform } from 'react-native';
 
+// A warm, "cute" palette (cream/peach base, coral accent) instead of the
+// original cool blue-and-white look — this is a language-learning app meant
+// to feel inviting for daily use, not a productivity tool.
 export const Colors = {
   light: {
-    text: '#1A1D29',
-    background: '#FFFFFF',
-    backgroundElement: '#F2F6FF',
-    backgroundSelected: '#DCE8FF',
-    textSecondary: '#5B6472',
-    primary: '#3B82F6',
+    text: '#4A3F35',
+    background: '#FFFBF5',
+    backgroundElement: '#FFF1E1',
+    backgroundSelected: '#FFDFB8',
+    textSecondary: '#8D7A6B',
+    primary: '#F2665F',
     primaryText: '#FFFFFF',
-    success: '#16A34A',
-    successBackground: '#DCFCE7',
-    warning: '#D97706',
-    danger: '#DC2626',
-    dangerBackground: '#FEE2E2',
-    border: '#E2E9FB',
+    success: '#57B894',
+    successBackground: '#E1F5EC',
+    warning: '#F2A54A',
+    danger: '#E14D4D',
+    dangerBackground: '#FBE4E1',
+    border: '#F3DDBF',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light;
+
+// Soft pastel hues for varying card backgrounds on screens with several
+// distinct sections at once (e.g. the dashboard) — see index.tsx. Kept
+// separate from Colors.light since these are for visual variety between
+// sibling cards, not a semantic color like "danger" or "success".
+export const AccentPalette = ['#FFE3E0', '#FFF1CC', '#E3F3E6', '#E1EEFB', '#F1E4FB'] as const;
 
 export const Fonts = Platform.select({
   ios: {

@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: Spacing.four },
   progressFill: { height: 6, borderRadius: 3 },
-  card: { borderRadius: 16, padding: Spacing.four },
+  card: { borderRadius: 22, padding: Spacing.four },
   input: {
     borderWidth: 1,
     borderRadius: 10,

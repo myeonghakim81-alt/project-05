@@ -11,7 +11,7 @@ import { summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
 import { dueForReview } from '@/lib/srs';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { AccentPalette, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const SKILL_LABELS: [key: string, label: string][] = [
@@ -65,7 +65,7 @@ export default function Dashboard() {
             Overall {summary.overall}
           </ThemedText>
 
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.card, { backgroundColor: AccentPalette[0] }]}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
               현재 레벨
             </ThemedText>
@@ -80,7 +80,7 @@ export default function Dashboard() {
             <PrimaryButton label="레벨 테스트 다시 보기" variant="secondary" onPress={() => router.push('/placement-test')} />
           </View>
 
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.card, { backgroundColor: AccentPalette[1] }]}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
               오늘의 복습
             </ThemedText>
@@ -96,13 +96,13 @@ export default function Dashboard() {
             )}
           </View>
 
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.card, { backgroundColor: AccentPalette[2] }]}>
             {SKILL_LABELS.map(([key, label]) => (
               <SkillBar key={key} label={label} value={(summary.scores as any)[key]} />
             ))}
           </View>
 
-          <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+          <View style={[styles.card, { backgroundColor: AccentPalette[3] }]}>
             <ThemedText type="subtitle" style={styles.sectionTitle}>
               어휘 구분
             </ThemedText>
@@ -114,7 +114,7 @@ export default function Dashboard() {
           </View>
 
           {reviewQueue.length > 0 && (
-            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+            <View style={[styles.card, { backgroundColor: AccentPalette[4] }]}>
               <ThemedText type="subtitle" style={styles.sectionTitle}>
                 복습 큐
               </ThemedText>
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scrollContent: { alignItems: 'center', paddingVertical: Spacing.five },
   container: { width: '100%', maxWidth: MaxContentWidth, paddingHorizontal: Spacing.four },
-  card: { borderRadius: 16, padding: Spacing.four, marginTop: Spacing.four },
+  card: { borderRadius: 22, padding: Spacing.four, marginTop: Spacing.four },
   sectionTitle: { fontSize: 20, marginBottom: Spacing.three },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   divider: { height: 1, backgroundColor: 'rgba(128,128,128,0.2)', marginVertical: 8 },
