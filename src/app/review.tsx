@@ -34,6 +34,7 @@ export default function Review() {
   const theme = useTheme();
   const entries = useLearnerStore((s) => s.entries);
   const recordReviewOutcome = useLearnerStore((s) => s.recordReviewOutcome);
+  const recordWordTestResult = useLearnerStore((s) => s.recordWordTestResult);
 
   const [sample, setSample] = useState<VocabularyItem[]>([]);
   const [phrasePick, setPhrasePick] = useState<Record<string, ReturnType<typeof phrasesForWord>[number] | undefined>>({});
@@ -91,6 +92,7 @@ export default function Review() {
     const correct = meaningChoices.find((c) => c.id === meaningAnswered)?.correct ?? false;
     const results = [...meaningResults, correct];
     setMeaningResults(results);
+    recordWordTestResult(sample[index].id, correct);
     const nextIndex = index + 1;
     if (nextIndex < sample.length) {
       setIndex(nextIndex);

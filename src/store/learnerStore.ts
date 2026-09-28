@@ -19,6 +19,13 @@ interface LearnerStoreState {
   // micro skill-score update) — advances or steps back its spaced-repetition
   // schedule. See src/lib/srs.ts.
   recordReviewOutcome: (vocabularyItemId: string, success: boolean) => Promise<LearnerVocabulary>;
+  // Persists a per-word, per-learner "got it wrong" memory (LearnerVocabulary
+  // .failureCount, one of the domain-model fields from the original spec
+  // that was never wired up) — separate from the smoothed skill scores, so
+  // level-study's word picker (pickLevelStudySample) can bring a missed word
+  // back into a future day's session instead of only relying on the
+  // dashboard's weak-score queue. A later correct answer clears it.
+  recordWordTestResult: (vocabularyItemId: string, correct: boolean) => Promise<LearnerVocabulary>;
 }
 
 function blankEntry(vocabularyItemId: string): LearnerVocabulary {
@@ -107,6 +114,14 @@ export const useLearnerStore = create<LearnerStoreState>((set, get) => ({
     const current = get().getOrCreate(vocabularyItemId);
     const scheduled = scheduleReview(current, success);
     const updated: LearnerVocabulary = { ...current, ...scheduled };
+    await learnerRepository.saveLearnerVocabulary(updated);
+    set((state) => ({ entries: { ...state.entries, [vocabularyItemId]: updated } }));
+    return updated;
+  },
+
+  recordWordTestResult: async (vocabularyItemId, correct) => {
+    const current = get().getOrCreate(vocabularyItemId);
+    const updated: LearnerVocabulary = { ...current, failureCount: correct ? 0 : current.failureCount + 1 };
     await learnerRepository.saveLearnerVocabulary(updated);
     set((state) => ({ entries: { ...state.entries, [vocabularyItemId]: updated } }));
     return updated;

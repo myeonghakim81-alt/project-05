@@ -5,6 +5,7 @@ import {
   WeaknessThreshold,
   vocabularyToSpeechGap,
 } from '@/lib/policy';
+import { shuffle } from '@/lib/scoring';
 import type { LearnerVocabulary, MasteryState, NextActivity, SkillScores, VocabularyItem } from '@/types/domain';
 
 // spec 13: adaptive "what to practice next" — bottleneck-driven, in order.
@@ -77,6 +78,37 @@ export function pickRecommendedWord(
 
   const notStarted = ordered.find((item) => !entries[item.id]);
   return notStarted ?? ordered[0];
+}
+
+// Picks a level-study day's batch of words. Never-seen words come first (so
+// "10 words a day" actually walks through the whole level exactly once,
+// instead of the old pure-random sample which could take hundreds of days to
+// cover a level via the coupon-collector effect and never guaranteed full
+// coverage at all). Once a level has been fully seen, words previously
+// gotten wrong (LearnerVocabulary.failureCount > 0, see recordWordTestResult
+// in learnerStore.ts) are prioritized before untroubled ones, so mistakes
+// resurface in the next day's session rather than only in the separate
+// weak-score/spaced-review queues.
+export function pickLevelStudySample(
+  words: VocabularyItem[],
+  entries: Record<string, LearnerVocabulary>,
+  sampleSize: number,
+): VocabularyItem[] {
+  const unseen = shuffle(words.filter((w) => !entries[w.id]));
+  const seen = words.filter((w) => entries[w.id]);
+  const mistaken = seen
+    .filter((w) => entries[w.id].failureCount > 0)
+    .sort((a, b) => entries[b.id].failureCount - entries[a.id].failureCount);
+  const clean = shuffle(seen.filter((w) => entries[w.id].failureCount === 0));
+
+  const sample: VocabularyItem[] = [];
+  for (const pool of [unseen, mistaken, clean]) {
+    for (const w of pool) {
+      if (sample.length >= sampleSize) return sample;
+      sample.push(w);
+    }
+  }
+  return sample;
 }
 
 export interface DashboardSummary {

@@ -8,13 +8,13 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { contexts } from '@/content/contexts';
 import { maxContentLevel, phrasesForWord, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
+import { pickLevelStudySample } from '@/lib/masteryEngine';
 import { LevelDropThreshold, LevelPassThreshold, LevelStudySampleSize, WeaknessThreshold } from '@/lib/policy';
 import {
   average,
   buildWordMeaningChoices,
   estimatePronunciationScore,
   scoreExpressSentence,
-  shuffle,
   sortByDifficulty,
   wordOverlap,
   type MeaningChoice,
@@ -56,8 +56,10 @@ export default function LevelStudy() {
   const theme = useTheme();
   const level = useLevelStore((s) => s.currentLevel);
   const setLevel = useLevelStore((s) => s.setLevel);
+  const entries = useLearnerStore((s) => s.entries);
   const bumpTowards = useLearnerStore((s) => s.bumpTowards);
   const recordReviewOutcome = useLearnerStore((s) => s.recordReviewOutcome);
+  const recordWordTestResult = useLearnerStore((s) => s.recordWordTestResult);
 
   const [sample, setSample] = useState<VocabularyItem[]>([]);
   const [phase, setPhase] = useState<Phase>('expose');
@@ -84,8 +86,12 @@ export default function LevelStudy() {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   useEffect(() => {
-    const words = shuffle(vocabularyByLevel(level)).slice(0, LevelStudySampleSize);
+    const words = pickLevelStudySample(vocabularyByLevel(level), entries, LevelStudySampleSize);
     setSample(words);
+    // Deliberately keyed on `level` only — `entries` changes constantly
+    // during the session (every score update) and re-picking mid-session
+    // would swap words out from under the learner. The sample is meant to
+    // be fixed for the whole session, decided once when it starts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
@@ -122,6 +128,7 @@ export default function LevelStudy() {
     const correct = wordTestChoices.find((c) => c.id === wordTestAnswered)?.correct ?? false;
     const results = [...wordTestResults, correct];
     setWordTestResults(results);
+    recordWordTestResult(sample[index].id, correct);
     const nextIndex = index + 1;
     if (nextIndex < sample.length) {
       setIndex(nextIndex);

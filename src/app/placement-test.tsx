@@ -10,6 +10,7 @@ import { maxContentLevel, vocabulary, vocabularyByLevel } from '@/content/vocabu
 import { LevelPassThreshold, PlacementSampleSize } from '@/lib/policy';
 import { buildWordMeaningChoices, shuffle, type MeaningChoice } from '@/lib/scoring';
 import { isTtsSupported, speak } from '@/lib/speech';
+import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
 import type { VocabularyItem } from '@/types/domain';
@@ -24,6 +25,7 @@ export default function PlacementTest() {
   const router = useRouter();
   const theme = useTheme();
   const setLevel = useLevelStore((s) => s.setLevel);
+  const recordWordTestResult = useLearnerStore((s) => s.recordWordTestResult);
 
   const [level, setLocalLevel] = useState(1);
   const [sample, setSample] = useState<VocabularyItem[]>([]);
@@ -66,6 +68,7 @@ export default function PlacementTest() {
     if (answered) return;
     setAnswered(choiceId);
     if (isCorrect) setCorrect((c) => c + 1);
+    recordWordTestResult(sample[index].id, isCorrect);
   }
 
   // Same pattern as level-study.tsx: a correct pick auto-advances after a
