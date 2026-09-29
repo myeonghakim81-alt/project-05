@@ -19,7 +19,7 @@ import {
   wordOverlap,
   type MeaningChoice,
 } from '@/lib/scoring';
-import { isSttSupported, isTtsSupported, speak, startListening } from '@/lib/speech';
+import { isSttSupported, isTtsSupported, speak, startListening, voiceGenderForLevel } from '@/lib/speech';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
@@ -304,7 +304,7 @@ export default function LevelStudy() {
               <PrimaryButton
                 label={isTtsSupported() ? '🔊 발음 듣기' : '🔊 발음 듣기 (미지원 브라우저)'}
                 variant="secondary"
-                onPress={() => speak(currentWord.word)}
+                onPress={() => speak(currentWord.word, { gender: voiceGenderForLevel(level) })}
               />
               <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.three, marginBottom: Spacing.three }}>
                 {currentWord.meaning} · {currentWord.definition}
@@ -324,7 +324,7 @@ export default function LevelStudy() {
               <PrimaryButton
                 label={isTtsSupported() ? '🔊 발음 듣기' : '🔊 발음 듣기 (미지원 브라우저)'}
                 variant="secondary"
-                onPress={() => speak(currentWord.word)}
+                onPress={() => speak(currentWord.word, { gender: voiceGenderForLevel(level) })}
               />
               <View style={{ height: Spacing.three }} />
               <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
@@ -363,7 +363,11 @@ export default function LevelStudy() {
                 {currentWord.word}
               </ThemedText>
               <ThemedText style={{ marginBottom: Spacing.three }}>{pronPhrase?.text ?? currentWord.word}</ThemedText>
-              <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(pronPhrase?.text ?? currentWord.word)} />
+              <PrimaryButton
+                label="🔊 듣기"
+                variant="secondary"
+                onPress={() => speak(pronPhrase?.text ?? currentWord.word, { gender: voiceGenderForLevel(level) })}
+              />
               <View style={{ height: 8 }} />
               {isSttSupported() && (
                 <>
@@ -405,7 +409,11 @@ export default function LevelStudy() {
                   <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.one }}>
                     {situationPhrase.question}
                   </ThemedText>
-                  <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(situationPhrase.question!)} />
+                  <PrimaryButton
+                    label="🔊 듣기"
+                    variant="secondary"
+                    onPress={() => speak(situationPhrase.question!, { gender: voiceGenderForLevel(level) })}
+                  />
                   <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.two, marginBottom: Spacing.two }}>
                     위 질문에 "{currentWord.word}"를 사용해서 대답해보세요
                   </ThemedText>

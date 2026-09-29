@@ -19,7 +19,7 @@ import {
   type GeminiConversationAnalysis,
 } from '@/lib/gemini';
 import { buildMeaningChoices, estimatePronunciationScore, scoreExpressSentence, shuffle, sortByDifficulty, wordOverlap } from '@/lib/scoring';
-import { isSttSupported, isTtsSupported, speak, startListening } from '@/lib/speech';
+import { isSttSupported, isTtsSupported, speak, startListening, voiceGenderForLevel } from '@/lib/speech';
 import { CURRENT_USER_ID } from '@/lib/storage';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useTheme } from '@/hooks/use-theme';
@@ -406,7 +406,7 @@ export default function Lesson() {
               <PrimaryButton
                 label={isTtsSupported() ? '🔊 문장 듣기' : '🔊 문장 듣기 (이 브라우저는 TTS 미지원)'}
                 variant="secondary"
-                onPress={() => speak(phrases[listenIndex].text)}
+                onPress={() => speak(phrases[listenIndex].text, { gender: voiceGenderForLevel(word.level) })}
               />
               <View style={{ height: Spacing.three }} />
               {listenChoices.map((choice) => {
@@ -445,7 +445,11 @@ export default function Lesson() {
                 듣고 따라 말해보세요
               </ThemedText>
               <ThemedText style={{ marginBottom: Spacing.three }}>{shadowPhrases[shadowIndex].text}</ThemedText>
-              <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(shadowPhrases[shadowIndex].text)} />
+              <PrimaryButton
+                label="🔊 듣기"
+                variant="secondary"
+                onPress={() => speak(shadowPhrases[shadowIndex].text, { gender: voiceGenderForLevel(word.level) })}
+              />
               <View style={{ height: 8 }} />
               {isSttSupported() && (
                 <>
@@ -546,7 +550,11 @@ export default function Lesson() {
                   <ThemedText type="smallBold">AI</ThemedText>
                   <ThemedText style={{ marginBottom: 4 }}>{aiTurns[i] ?? '...'}</ThemedText>
                   {i === turnIndex && aiTurns[i] && (
-                    <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(aiTurns[i])} />
+                    <PrimaryButton
+                      label="🔊 듣기"
+                      variant="secondary"
+                      onPress={() => speak(aiTurns[i], { gender: voiceGenderForLevel(word.level) })}
+                    />
                   )}
                   {learnerTurns[i] ? (
                     <>

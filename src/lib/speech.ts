@@ -26,10 +26,21 @@ export function isSttSupported(): boolean {
   }
 }
 
+export type VoiceGender = 'male' | 'female';
+
+// Alternates by level so a learner hears both genders as they progress
+// through the curriculum (spec doesn't distinguish voices by content, but a
+// single fixed voice for the whole app is also an arbitrary choice — this
+// one is at least deterministic and evenly split, 5 levels each).
+export function voiceGenderForLevel(level: number): VoiceGender {
+  return level % 2 === 0 ? 'male' : 'female';
+}
+
 export interface SpeakOptions {
   rate?: number; // 0.1 - 2, 1 = normal (expo-speech scale)
   pitch?: number; // 0 - 2
   voiceIdentifier?: string;
+  gender?: VoiceGender;
 }
 
 // Voice quality is entirely up to the OS/browser — there is no API key that
@@ -55,27 +66,84 @@ const VOICE_NAME_PREFERENCE = [
   'guy',
 ];
 
-function voiceScore(voice: Speech.Voice | Speech.WebVoice): number {
+// expo-speech/Web Speech voices don't expose a gender field on any
+// platform, so this is a name-based heuristic (same idea browsers/OSes use
+// internally) — good enough to bias voice selection, not a hard guarantee
+// every installed voice list will contain a match for both genders.
+const FEMALE_VOICE_HINTS = [
+  'female',
+  'samantha',
+  'victoria',
+  'karen',
+  'moira',
+  'tessa',
+  'fiona',
+  'susan',
+  'zira',
+  'aria',
+  'jenny',
+  'ava',
+  'zoe',
+  'salli',
+  'joanna',
+  'kimberly',
+  'kendra',
+  'ivy',
+  'serena',
+  'allison',
+];
+const MALE_VOICE_HINTS = [
+  'male',
+  'daniel',
+  'alex',
+  'fred',
+  'guy',
+  'ryan',
+  'eric',
+  'mark',
+  'matthew',
+  'justin',
+  'brian',
+  'david',
+  'george',
+  'oliver',
+  'aaron',
+  'tom',
+];
+
+function guessVoiceGender(name: string): VoiceGender | null {
+  const lower = name.toLowerCase();
+  if (FEMALE_VOICE_HINTS.some((h) => lower.includes(h))) return 'female';
+  if (MALE_VOICE_HINTS.some((h) => lower.includes(h))) return 'male';
+  return null;
+}
+
+function voiceScore(voice: Speech.Voice | Speech.WebVoice, preferredGender?: VoiceGender): number {
   const name = voice.name.toLowerCase();
   const nameRank = VOICE_NAME_PREFERENCE.findIndex((n) => name.includes(n));
   let score = nameRank === -1 ? 100 : nameRank;
   if (voice.quality === 'Enhanced') score -= 50;
   if ('localService' in voice && voice.localService === false) score -= 20; // network voice, usually higher quality
+  if (preferredGender && guessVoiceGender(voice.name) === preferredGender) score -= 1000; // outranks everything else when available
   return score;
 }
 
-let cachedBestVoice: Promise<Speech.Voice | null> | null = null;
+const bestVoiceCache = new Map<string, Promise<Speech.Voice | null>>();
 
-async function pickBestVoice(): Promise<Speech.Voice | null> {
-  if (!cachedBestVoice) {
-    cachedBestVoice = (async () => {
-      const voices = await Speech.getAvailableVoicesAsync().catch(() => []);
-      const english = voices.filter((v) => v.language.toLowerCase().startsWith('en'));
-      if (english.length === 0) return null;
-      return [...english].sort((a, b) => voiceScore(a) - voiceScore(b))[0];
-    })();
+async function pickBestVoice(preferredGender?: VoiceGender): Promise<Speech.Voice | null> {
+  const cacheKey = preferredGender ?? 'any';
+  if (!bestVoiceCache.has(cacheKey)) {
+    bestVoiceCache.set(
+      cacheKey,
+      (async () => {
+        const voices = await Speech.getAvailableVoicesAsync().catch(() => []);
+        const english = voices.filter((v) => v.language.toLowerCase().startsWith('en'));
+        if (english.length === 0) return null;
+        return [...english].sort((a, b) => voiceScore(a, preferredGender) - voiceScore(b, preferredGender))[0];
+      })(),
+    );
   }
-  return cachedBestVoice;
+  return bestVoiceCache.get(cacheKey)!;
 }
 
 // Currently playing Google TTS clip, if any — tracked so stopSpeaking() and
@@ -83,9 +151,9 @@ async function pickBestVoice(): Promise<Speech.Voice | null> {
 // reach for once audio comes from a plain <audio> element).
 let currentGoogleAudio: HTMLAudioElement | null = null;
 
-function speakWithGoogleTts(text: string, rate: number): Promise<void> {
+function speakWithGoogleTts(text: string, rate: number, gender?: VoiceGender): Promise<void> {
   return new Promise((resolve, reject) => {
-    synthesizeSpeech(text, rate)
+    synthesizeSpeech(text, rate, gender)
       .then((base64) => {
         currentGoogleAudio?.pause();
         const audio = new Audio(`data:audio/mp3;base64,${base64}`);
@@ -100,7 +168,7 @@ function speakWithGoogleTts(text: string, rate: number): Promise<void> {
 
 function speakWithDeviceVoice(text: string, options: SpeakOptions): Promise<void> {
   return new Promise(async (resolve) => {
-    const voice = options.voiceIdentifier ?? (await pickBestVoice().catch(() => null))?.identifier;
+    const voice = options.voiceIdentifier ?? (await pickBestVoice(options.gender).catch(() => null))?.identifier;
     Speech.stop();
     Speech.speak(text, {
       language: 'en-US',
@@ -128,7 +196,7 @@ export function speak(text: string, options: SpeakOptions = {}): Promise<void> {
   // key, quota, offline) — falls back to the on-device voice so speech
   // never just stops working.
   if (isGoogleTtsConfigured && Platform.OS === 'web') {
-    return speakWithGoogleTts(text, options.rate ?? 0.95).catch(() => speakWithDeviceVoice(text, options));
+    return speakWithGoogleTts(text, options.rate ?? 0.95, options.gender).catch(() => speakWithDeviceVoice(text, options));
   }
   return speakWithDeviceVoice(text, options);
 }

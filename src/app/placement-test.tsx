@@ -9,7 +9,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { maxContentLevel, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { LevelPassThreshold, PlacementSampleSize } from '@/lib/policy';
 import { buildWordMeaningChoices, shuffle, type MeaningChoice } from '@/lib/scoring';
-import { isTtsSupported, speak } from '@/lib/speech';
+import { isTtsSupported, speak, voiceGenderForLevel } from '@/lib/speech';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
@@ -177,7 +177,7 @@ export default function PlacementTest() {
             <PrimaryButton
               label={isTtsSupported() ? '🔊 발음 듣기' : '🔊 발음 듣기 (이 브라우저는 TTS 미지원)'}
               variant="secondary"
-              onPress={() => speak(currentWord.word)}
+              onPress={() => speak(currentWord.word, { gender: voiceGenderForLevel(currentWord.level) })}
             />
             <View style={{ height: Spacing.three }} />
             <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>

@@ -7,7 +7,15 @@
 // turned on. See docs/google-tts.md.
 
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_TTS_API_KEY;
-const VOICE_NAME = process.env.EXPO_PUBLIC_GOOGLE_TTS_VOICE ?? 'en-US-Neural2-C';
+// An explicit env override always wins (for someone who wants one fixed
+// voice); otherwise pick by gender so this stays consistent with the
+// device-voice path's per-level male/female split (see voiceGenderForLevel
+// in speech.ts). Both are real Google Cloud Neural2 en-US voices.
+const VOICE_NAME_OVERRIDE = process.env.EXPO_PUBLIC_GOOGLE_TTS_VOICE;
+const NEURAL2_VOICE_BY_GENDER: Record<'male' | 'female', string> = {
+  female: 'en-US-Neural2-C',
+  male: 'en-US-Neural2-D',
+};
 
 export const isGoogleTtsConfigured = Boolean(API_KEY);
 
@@ -16,8 +24,9 @@ const REQUEST_TIMEOUT_MS = 10000;
 // Returns base64-encoded MP3 audio content. Throws on any failure (bad key,
 // quota exceeded, offline, timeout) — callers fall back to the on-device
 // voice rather than treating this as a hard dependency.
-export async function synthesizeSpeech(text: string, rate = 0.95): Promise<string> {
+export async function synthesizeSpeech(text: string, rate = 0.95, gender: 'male' | 'female' = 'female'): Promise<string> {
   if (!API_KEY) throw new Error('Google Cloud TTS API key is not configured');
+  const voiceName = VOICE_NAME_OVERRIDE ?? NEURAL2_VOICE_BY_GENDER[gender];
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -29,7 +38,7 @@ export async function synthesizeSpeech(text: string, rate = 0.95): Promise<strin
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         input: { text },
-        voice: { languageCode: 'en-US', name: VOICE_NAME },
+        voice: { languageCode: 'en-US', name: voiceName },
         audioConfig: { audioEncoding: 'MP3', speakingRate: rate },
       }),
       signal: controller.signal,

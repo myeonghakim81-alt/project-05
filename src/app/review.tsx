@@ -11,7 +11,7 @@ import { phrasesForWord, vocabulary, vocabularyById } from '@/content/vocabulary
 import { DailyReviewCap, WeaknessThreshold } from '@/lib/policy';
 import { average, buildWordMeaningChoices, scoreExpressSentence, shuffle, type MeaningChoice } from '@/lib/scoring';
 import { dueForReview } from '@/lib/srs';
-import { isSttSupported, isTtsSupported, speak, startListening } from '@/lib/speech';
+import { isSttSupported, isTtsSupported, speak, startListening, voiceGenderForLevel } from '@/lib/speech';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useTheme } from '@/hooks/use-theme';
 import type { VocabularyItem } from '@/types/domain';
@@ -180,7 +180,7 @@ export default function Review() {
               <PrimaryButton
                 label={isTtsSupported() ? '🔊 발음 듣기' : '🔊 발음 듣기 (미지원 브라우저)'}
                 variant="secondary"
-                onPress={() => speak(currentWord.word)}
+                onPress={() => speak(currentWord.word, { gender: voiceGenderForLevel(currentWord.level) })}
               />
               <View style={{ height: Spacing.three }} />
               <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
@@ -222,7 +222,11 @@ export default function Review() {
                   <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.one }}>
                     {recallPhrase.question}
                   </ThemedText>
-                  <PrimaryButton label="🔊 듣기" variant="secondary" onPress={() => speak(recallPhrase.question!)} />
+                  <PrimaryButton
+                    label="🔊 듣기"
+                    variant="secondary"
+                    onPress={() => speak(recallPhrase.question!, { gender: voiceGenderForLevel(currentWord.level) })}
+                  />
                   <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.two, marginBottom: Spacing.two }}>
                     위 질문에 "{currentWord.word}"를 사용해서 대답해보세요
                   </ThemedText>
