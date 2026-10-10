@@ -9,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { buildDailySession, levelLabel, summarizeDashboard } from '@/lib/masteryEngine';
 import { DailyCarryOverWords, DailyReviewCap, DailySessionSize } from '@/lib/policy';
+import { confirmResetProgress, resetAllProgress } from '@/lib/resetProgress';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { AccentPalette, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -55,6 +56,13 @@ export default function Dashboard() {
   const dailyNewCount = dailySample.filter((s) => s.isNew).length;
   const dailyReviewCount = dailySample.length - dailyNewCount;
   const dailyLevels = Array.from(new Set(dailySample.map((s) => s.item.level))).sort((a, b) => a - b);
+
+  async function handleReset() {
+    const confirmed = await confirmResetProgress();
+    if (!confirmed) return;
+    await resetAllProgress();
+    router.replace('/placement-test');
+  }
 
   return (
     <ThemedView style={styles.flex}>
@@ -161,6 +169,10 @@ export default function Dashboard() {
               })}
             </View>
           )}
+
+          <ThemedText type="small" themeColor="textSecondary" style={styles.resetLink} onPress={handleReset}>
+            처음부터 다시 시작 (학습 기록 초기화)
+          </ThemedText>
         </View>
       </ScrollView>
     </ThemedView>
@@ -190,4 +202,5 @@ const styles = StyleSheet.create({
   statBox: { flex: 1, backgroundColor: 'rgba(255,255,255,0.65)', borderRadius: 12, padding: 10 },
   chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: Spacing.four },
   chip: { backgroundColor: '#FFFFFF', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  resetLink: { marginTop: Spacing.five, textAlign: 'center', textDecorationLine: 'underline' },
 });

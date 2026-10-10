@@ -22,6 +22,11 @@ export interface LearnerRepository {
   removeFromReviewQueue(vocabularyItemId: string): Promise<void>;
   getLevelProgress(): Promise<LevelProgress | null>;
   saveLevelProgress(progress: LevelProgress): Promise<void>;
+  // Wipes every stored record for this learner (vocabulary progress, review
+  // queue, level/placement state, session history) so the app can be driven
+  // back to a brand-new-learner state from inside the UI — see
+  // resetAllProgress in src/lib/resetProgress.ts.
+  clearAll(): Promise<void>;
 }
 
 const KEYS = {
@@ -111,6 +116,10 @@ export class LocalLearnerRepository implements LearnerRepository {
 
   async saveLevelProgress(progress: LevelProgress): Promise<void> {
     await writeJson(KEYS.levelProgress, progress);
+  }
+
+  async clearAll(): Promise<void> {
+    await AsyncStorage.multiRemove(Object.values(KEYS));
   }
 }
 
@@ -280,6 +289,14 @@ export class SupabaseLearnerRepository implements LearnerRepository {
       placement_completed: progress.placementCompleted,
     });
     if (error) throw error;
+  }
+
+  async clearAll(): Promise<void> {
+    const tables = ['learner_vocabulary', 'vocabulary_context_performance', 'conversation_sessions', 'review_queue', 'level_progress'];
+    for (const table of tables) {
+      const { error } = await supabase!.from(table).delete().eq('user_id', CURRENT_USER_ID);
+      if (error) throw error;
+    }
   }
 }
 
