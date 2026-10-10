@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { BackButton } from '@/components/back-button';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -161,9 +162,12 @@ export default function PlacementTest() {
     <ThemedView style={styles.flex}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
-          <ThemedText type="smallBold" themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
-            레벨 테스트 · Level {level} ({index + 1}/{sample.length})
-          </ThemedText>
+          <View style={styles.headerRow}>
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              레벨 테스트 · Level {level} ({index + 1}/{sample.length})
+            </ThemedText>
+            <BackButton label="건너뛰기" onPress={() => finish(level, false)} />
+          </View>
           <View style={[styles.progressTrack, { backgroundColor: theme.backgroundElement }]}>
             <View
               style={[styles.progressFill, { width: `${((index + 1) / sample.length) * 100}%`, backgroundColor: theme.primary }]}
@@ -216,6 +220,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scrollContent: { alignItems: 'center', paddingVertical: Spacing.five },
   container: { width: '100%', maxWidth: MaxContentWidth, paddingHorizontal: Spacing.four },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.two },
   card: { borderRadius: 22, padding: Spacing.four },
   progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: Spacing.four },
   progressFill: { height: 6, borderRadius: 3 },

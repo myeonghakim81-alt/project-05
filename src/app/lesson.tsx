@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { BackButton } from '@/components/back-button';
 import { PrimaryButton } from '@/components/primary-button';
 import { SkillBar } from '@/components/skill-bar';
 import { ThemedText } from '@/components/themed-text';
@@ -360,9 +361,7 @@ export default function Lesson() {
             <ThemedText type="smallBold" themeColor="textSecondary">
               {STEP_LABEL[step]} ({stepIndex + 1}/{STEP_ORDER.length})
             </ThemedText>
-            <ThemedText type="linkPrimary" onPress={() => router.replace('/')}>
-              나가기
-            </ThemedText>
+            <BackButton />
           </View>
           <View style={[styles.progressTrack, { backgroundColor: theme.backgroundElement }]}>
             <View

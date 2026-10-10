@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { BackButton } from '@/components/back-button';
 import { PrimaryButton } from '@/components/primary-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -192,9 +193,7 @@ export default function Daily() {
                 </ThemedText>
               )}
             </View>
-            <ThemedText type="linkPrimary" onPress={() => router.replace('/')}>
-              나가기
-            </ThemedText>
+            <BackButton />
           </View>
 
           {phase === 'meaning-test' && (
