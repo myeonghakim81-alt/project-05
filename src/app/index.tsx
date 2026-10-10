@@ -45,14 +45,7 @@ export default function Dashboard() {
   const summary = summarizeDashboard(entryList);
   const levelWordCount = vocabularyByLevel(levelStore.currentLevel).length;
 
-  const dailySample = buildDailySession(
-    vocabulary,
-    vocabularyByLevel(levelStore.currentLevel),
-    entries,
-    DailySessionSize,
-    DailyReviewCap,
-    DailyCarryOverWords,
-  );
+  const dailySample = buildDailySession(vocabulary, entries, DailySessionSize, DailyReviewCap, DailyCarryOverWords);
   const dailyNewCount = dailySample.filter((s) => s.isNew).length;
   const dailyReviewCount = dailySample.length - dailyNewCount;
   const dailyLevels = Array.from(new Set(dailySample.map((s) => s.item.level))).sort((a, b) => a - b);

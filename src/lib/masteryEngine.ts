@@ -136,20 +136,20 @@ export interface DailySessionItem {
   isCarryOver: boolean;
 }
 
-// /daily ("오늘의 학습"): a single session that mixes spaced-repetition
-// review (any level, so difficulty is naturally mixed) with a trickle of
-// new words from the learner's current level, instead of /level-study's
-// single-level scope. Composition, in priority order:
+// /daily ("오늘의 학습"): a single session that's deliberately level-agnostic
+// end to end — unlike /level-study, which stays scoped to the learner's
+// current level. Composition, in priority order:
 //   1. words due for review today (dueForReview), capped at `reviewCap`
 //   2. up to `carryOverCount` words whose LAST review fell on the previous
 //      calendar day and aren't already covered by (1) — forces 1-2 very
 //      recent words to resurface a day later even before their formal SRS
 //      gap is up
-//   3. new words from the current level (pickLevelStudySample) filling the
-//      rest up to `sessionSize`
+//   3. new words from the ENTIRE vocabulary, any level (pickLevelStudySample
+//      over `allWords`, not just the current level) filling the rest up to
+//      `sessionSize` — this is what makes the mode's difficulty genuinely
+//      mixed rather than anchored to wherever /level-study has gotten to
 export function buildDailySession(
   allWords: VocabularyItem[],
-  currentLevelWords: VocabularyItem[],
   entries: Record<string, LearnerVocabulary>,
   sessionSize: number,
   reviewCap: number,
@@ -183,7 +183,7 @@ export function buildDailySession(
   const usedIds = new Set(reviewItems.map((r) => r.item.id));
   const remaining = Math.max(0, sessionSize - reviewItems.length);
   const newItems: DailySessionItem[] = pickLevelStudySample(
-    currentLevelWords.filter((w) => !usedIds.has(w.id)),
+    allWords.filter((w) => !usedIds.has(w.id)),
     entries,
     remaining,
   ).map((item) => ({ item, isNew: !entries[item.id], isCarryOver: false }));

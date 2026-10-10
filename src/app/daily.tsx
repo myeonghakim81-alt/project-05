@@ -8,22 +8,21 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { contexts } from '@/content/contexts';
-import { phrasesForWord, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
+import { phrasesForWord, vocabulary } from '@/content/vocabulary';
 import { buildDailySession, type DailySessionItem } from '@/lib/masteryEngine';
 import { DailyCarryOverWords, DailyReviewCap, DailySessionSize, MasteryThreshold, WeaknessThreshold } from '@/lib/policy';
 import { average, buildWordMeaningChoices, scoreExpressSentence, shuffle, type MeaningChoice } from '@/lib/scoring';
 import { isSttSupported, isTtsSupported, speak, startListening, voiceGenderForLevel } from '@/lib/speech';
 import { useLearnerStore } from '@/store/learnerStore';
-import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
 
-// "오늘의 학습" — a single daily session that mixes spaced-repetition review
-// (any level, so difficulty is naturally mixed) with a trickle of new words
-// from the current level, instead of /level-study's single-level scope. See
+// "오늘의 학습" — a single daily session that's level-agnostic end to end:
+// spaced-repetition review plus new words both draw from the whole
+// vocabulary, any level, instead of /level-study's single-level scope. See
 // buildDailySession (src/lib/masteryEngine.ts) for the exact composition
-// rule. Quick 2-phase pass per word (meaning recall, then a situational
-// answer in a newly-picked example context) — deliberately lighter than
-// level-study's 4-step loop, and no level change here.
+// rule. Same 2-phase pass per word as /level-study (meaning recall, then a
+// situational answer in a newly-picked example context) — the two modes
+// differ only in where their words come from, not in format.
 type Phase = 'meaning-test' | 'recall-test' | 'result';
 
 const PHASE_LABEL: Record<Phase, string> = {
@@ -36,7 +35,6 @@ export default function Daily() {
   const router = useRouter();
   const theme = useTheme();
   const entries = useLearnerStore((s) => s.entries);
-  const currentLevel = useLevelStore((s) => s.currentLevel);
   const recordReviewOutcome = useLearnerStore((s) => s.recordReviewOutcome);
   const recordWordTestResult = useLearnerStore((s) => s.recordWordTestResult);
 
@@ -57,14 +55,7 @@ export default function Daily() {
   const [sessionScore, setSessionScore] = useState(0);
 
   useEffect(() => {
-    const words = buildDailySession(
-      vocabulary,
-      vocabularyByLevel(currentLevel),
-      entries,
-      DailySessionSize,
-      DailyReviewCap,
-      DailyCarryOverWords,
-    );
+    const words = buildDailySession(vocabulary, entries, DailySessionSize, DailyReviewCap, DailyCarryOverWords);
     setSample(words);
     const picks: typeof phrasePick = {};
     for (const { item } of words) {

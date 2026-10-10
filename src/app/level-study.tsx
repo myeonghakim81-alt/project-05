@@ -10,47 +10,22 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { contexts } from '@/content/contexts';
 import { maxContentLevel, phrasesForWord, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { pickLevelStudySample } from '@/lib/masteryEngine';
-import { LevelDropThreshold, LevelPassThreshold, LevelStudySampleSize, WeaknessThreshold } from '@/lib/policy';
-import {
-  average,
-  buildWordMeaningChoices,
-  estimatePronunciationScore,
-  scoreExpressSentence,
-  sortByDifficulty,
-  wordOverlap,
-  type MeaningChoice,
-} from '@/lib/scoring';
+import { LevelDropThreshold, LevelPassThreshold, LevelStudySampleSize, MasteryThreshold, WeaknessThreshold } from '@/lib/policy';
+import { average, buildWordMeaningChoices, scoreExpressSentence, shuffle, type MeaningChoice } from '@/lib/scoring';
 import { isSttSupported, isTtsSupported, speak, startListening, voiceGenderForLevel } from '@/lib/speech';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
 import type { VocabularyItem } from '@/types/domain';
 
-type Phase = 'expose' | 'word-test' | 'pronunciation-test' | 'sentence-test' | 'confirm-skip' | 'result';
-
-const PHASE_LABEL: Record<Phase, string> = {
-  expose: '단어 노출',
-  'word-test': '단어 테스트',
-  'sentence-test': '문장 테스트',
-  'pronunciation-test': '발음 테스트',
-  'confirm-skip': '발음 테스트',
-  result: '결과',
-};
-
-interface Outcome {
-  overall: number;
-  wordScore: number;
-  sentenceScore: number;
-  pronScore: number | null;
-  verdict: 'pass' | 'repeat' | 'drop';
-}
-
-// Example sentences for a word, easiest first — used to pick what the
-// pronunciation step has the learner read aloud, and what "situation" the
-// sentence-production step frames itself around.
-function phrasesFor(word: VocabularyItem) {
-  return sortByDifficulty(phrasesForWord(word.id));
-}
+// "Level N 학습" — same short 2-phase session format as /daily (meaning
+// recall, then a situational answer), but scoped to only the learner's
+// current level instead of /daily's level-agnostic mix. A pass/repeat/drop
+// verdict (same thresholds the old 4-phase flow used) is still computed
+// from the session score at the end, so the level can still move — just
+// without dedicated pronunciation/sentence-test phases.
+type Phase = 'meaning-test' | 'recall-test' | 'result';
+type Verdict = 'pass' | 'repeat' | 'drop';
 
 export default function LevelStudy() {
   const router = useRouter();
@@ -58,113 +33,98 @@ export default function LevelStudy() {
   const level = useLevelStore((s) => s.currentLevel);
   const setLevel = useLevelStore((s) => s.setLevel);
   const entries = useLearnerStore((s) => s.entries);
-  const bumpTowards = useLearnerStore((s) => s.bumpTowards);
   const recordReviewOutcome = useLearnerStore((s) => s.recordReviewOutcome);
   const recordWordTestResult = useLearnerStore((s) => s.recordWordTestResult);
 
   const [sample, setSample] = useState<VocabularyItem[]>([]);
-  const [phase, setPhase] = useState<Phase>('expose');
+  const [phrasePick, setPhrasePick] = useState<Record<string, ReturnType<typeof phrasesForWord>[number] | undefined>>({});
+  const [phase, setPhase] = useState<Phase>('meaning-test');
   const [index, setIndex] = useState(0);
 
-  // word-test
-  const [wordTestChoices, setWordTestChoices] = useState<MeaningChoice[]>([]);
-  const [wordTestAnswered, setWordTestAnswered] = useState<string | null>(null);
-  const [wordTestResults, setWordTestResults] = useState<boolean[]>([]);
+  const [meaningChoices, setMeaningChoices] = useState<MeaningChoice[]>([]);
+  const [meaningAnswered, setMeaningAnswered] = useState<string | null>(null);
+  const [meaningResults, setMeaningResults] = useState<boolean[]>([]);
 
-  // sentence-test
-  const [sentenceText, setSentenceText] = useState('');
-  const [sentenceSubmitted, setSentenceSubmitted] = useState(false);
-  const [sentenceScores, setSentenceScores] = useState<number[]>([]);
+  const [recallText, setRecallText] = useState('');
+  const [recallSubmitted, setRecallSubmitted] = useState(false);
+  const [recallScores, setRecallScores] = useState<number[]>([]);
 
-  // pronunciation-test
-  const [pronTranscript, setPronTranscript] = useState('');
-  const [pronConfidence, setPronConfidence] = useState(0);
-  const [pronUsedVoice, setPronUsedVoice] = useState(false);
-  const [pronListening, setPronListening] = useState(false);
-  const [pronunciationScores, setPronunciationScores] = useState<(number | null)[]>([]);
-  const [pronunciationSkippedCount, setPronunciationSkippedCount] = useState(0);
-
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [done, setDone] = useState(false);
+  const [sessionScore, setSessionScore] = useState(0);
+  const [verdict, setVerdict] = useState<Verdict>('repeat');
+  const [newLevel, setNewLevel] = useState(level);
 
   useEffect(() => {
     const words = pickLevelStudySample(vocabularyByLevel(level), entries, LevelStudySampleSize);
     setSample(words);
-    // Deliberately keyed on `level` only — `entries` changes constantly
-    // during the session (every score update) and re-picking mid-session
-    // would swap words out from under the learner. The sample is meant to
-    // be fixed for the whole session, decided once when it starts.
+    const picks: typeof phrasePick = {};
+    for (const item of words) {
+      const options = phrasesForWord(item.id);
+      picks[item.id] = shuffle(options)[0];
+    }
+    setPhrasePick(picks);
+    // Deliberately keyed on `level` only, same reasoning as the old
+    // level-study: `entries` changes constantly during the session and
+    // re-picking mid-session would swap words out from under the learner.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
-  function startWordTest() {
-    setIndex(0);
-    setWordTestResults([]);
-    prepareWordTestQuestion(sample[0]);
-    setPhase('word-test');
+  function prepareMeaningQuestion(word: VocabularyItem) {
+    setMeaningChoices(buildWordMeaningChoices(word, vocabulary));
+    setMeaningAnswered(null);
   }
 
-  function prepareWordTestQuestion(word: VocabularyItem) {
-    setWordTestChoices(buildWordMeaningChoices(word, vocabulary));
-    setWordTestAnswered(null);
-  }
-
-  function answerWordTest(choiceId: string) {
-    if (wordTestAnswered) return;
-    setWordTestAnswered(choiceId);
-  }
-
-  // A correct answer auto-advances after a beat so learners can move fast
-  // without a tap for every word; a wrong answer still needs the manual
-  // "다음" button so they have time to read the correct choice.
   useEffect(() => {
-    if (phase !== 'word-test' || !wordTestAnswered) return;
-    const correct = wordTestChoices.find((c) => c.id === wordTestAnswered)?.correct ?? false;
+    if (sample.length > 0) prepareMeaningQuestion(sample[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sample]);
+
+  function answerMeaning(choiceId: string) {
+    if (meaningAnswered) return;
+    setMeaningAnswered(choiceId);
+  }
+
+  useEffect(() => {
+    if (phase !== 'meaning-test' || !meaningAnswered) return;
+    const correct = meaningChoices.find((c) => c.id === meaningAnswered)?.correct ?? false;
     if (!correct) return;
-    const timer = setTimeout(() => nextWordTest(), 700);
+    const timer = setTimeout(() => nextMeaning(), 700);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wordTestAnswered]);
+  }, [meaningAnswered]);
 
-  function nextWordTest() {
-    const correct = wordTestChoices.find((c) => c.id === wordTestAnswered)?.correct ?? false;
-    const results = [...wordTestResults, correct];
-    setWordTestResults(results);
+  function nextMeaning() {
+    const correct = meaningChoices.find((c) => c.id === meaningAnswered)?.correct ?? false;
+    const results = [...meaningResults, correct];
+    setMeaningResults(results);
     recordWordTestResult(sample[index].id, correct);
     const nextIndex = index + 1;
     if (nextIndex < sample.length) {
       setIndex(nextIndex);
-      prepareWordTestQuestion(sample[nextIndex]);
+      prepareMeaningQuestion(sample[nextIndex]);
     } else {
       setIndex(0);
-      setPronunciationScores([]);
-      setPronunciationSkippedCount(0);
-      resetPronState();
-      setPhase('pronunciation-test');
+      setRecallScores([]);
+      setRecallText('');
+      setRecallSubmitted(false);
+      setPhase('recall-test');
     }
   }
 
-  function beginSentenceTest() {
-    setIndex(0);
-    setSentenceScores([]);
-    setSentenceText('');
-    setSentenceSubmitted(false);
-    setPhase('sentence-test');
+  function submitRecall() {
+    const score = scoreExpressSentence(sample[index].word, recallText);
+    setRecallScores((prev) => [...prev, score]);
+    setRecallSubmitted(true);
   }
 
-  function submitSentence() {
-    const score = scoreExpressSentence(sample[index].word, sentenceText);
-    setSentenceScores((prev) => [...prev, score]);
-    setSentenceSubmitted(true);
-  }
-
-  async function recordSentenceSpeech() {
+  async function recordRecallSpeech() {
     const result = await startListening();
-    setSentenceText(result.transcript);
+    setRecallText(result.transcript);
   }
 
-  function nextSentence() {
-    setSentenceText('');
-    setSentenceSubmitted(false);
+  function nextRecall() {
+    setRecallText('');
+    setRecallSubmitted(false);
     const nextIndex = index + 1;
     if (nextIndex < sample.length) {
       setIndex(nextIndex);
@@ -173,97 +133,36 @@ export default function LevelStudy() {
     }
   }
 
-  function resetPronState() {
-    setPronTranscript('');
-    setPronConfidence(0);
-    setPronUsedVoice(false);
-    setPronListening(false);
-  }
-
-  async function recordPronunciation() {
-    setPronListening(true);
-    setPronTranscript('');
-    setPronConfidence(0);
-    const result = await startListening();
-    setPronTranscript(result.transcript);
-    setPronConfidence(result.confidence);
-    setPronUsedVoice(true);
-    setPronListening(false);
-  }
-
-  function advancePronunciation(score: number | null, skippedNow: boolean) {
-    setPronunciationScores((prev) => [...prev, score]);
-    const totalSkips = pronunciationSkippedCount + (skippedNow ? 1 : 0);
-    if (skippedNow) setPronunciationSkippedCount(totalSkips);
-    resetPronState();
-    const nextIndex = index + 1;
-    if (nextIndex < sample.length) {
-      setIndex(nextIndex);
-    } else if (totalSkips > 0) {
-      setPhase('confirm-skip');
-    } else {
-      beginSentenceTest();
-    }
-  }
-
-  function submitPronunciation() {
-    const target = phrasesFor(sample[index])[0]?.text ?? sample[index].word;
-    const recallScore = wordOverlap(pronTranscript, target);
-    const score = estimatePronunciationScore(recallScore, pronConfidence, pronUsedVoice);
-    advancePronunciation(score, false);
-  }
-
-  function skipPronunciation() {
-    advancePronunciation(null, true);
-  }
-
-  function redoPronunciationFromScratch() {
-    setIndex(0);
-    setPronunciationScores([]);
-    setPronunciationSkippedCount(0);
-    resetPronState();
-    setPhase('pronunciation-test');
-  }
-
   useEffect(() => {
-    if (phase !== 'result' || outcome || sample.length === 0) return;
+    if (phase !== 'result' || done || sample.length === 0) return;
     (async () => {
-      const wordScore = Math.round((wordTestResults.filter(Boolean).length / sample.length) * 100);
-      const sentenceScore = average(sentenceScores);
-      const validPron = pronunciationScores.filter((s): s is number => s !== null);
-      const pronScore = validPron.length > 0 ? average(validPron) : null;
-      const categoryScores = [wordScore, sentenceScore, ...(pronScore !== null ? [pronScore] : [])];
-      const overall = average(categoryScores);
-      const verdict: Outcome['verdict'] = overall >= LevelPassThreshold ? 'pass' : overall < LevelDropThreshold ? 'drop' : 'repeat';
-
+      const perWordAverages: number[] = [];
       for (let i = 0; i < sample.length; i++) {
-        const w = sample[i];
-        const pron = pronunciationScores[i];
-        await bumpTowards(
-          w.id,
-          {
-            recognition: wordTestResults[i] ? 85 : 30,
-            expression: sentenceScores[i],
-            ...(pron !== null ? { pronunciation: pron } : {}),
-          },
-          0.5,
-        );
-        // Feeds the spaced-repetition schedule (src/lib/srs.ts) — a word
-        // this level-study pass went well for comes back for review later
-        // instead of only ever being touched once, on level-up.
-        const perWordScores = [wordTestResults[i] ? 100 : 0, sentenceScores[i], ...(pron !== null ? [pron] : [])];
-        const wordSucceeded = average(perWordScores) >= WeaknessThreshold;
-        await recordReviewOutcome(w.id, wordSucceeded);
+        const perWordScores = [meaningResults[i] ? 100 : 0, recallScores[i]];
+        const wordAverage = average(perWordScores);
+        perWordAverages.push(wordAverage);
+        await recordReviewOutcome(sample[i].id, wordAverage >= WeaknessThreshold);
       }
-
+      const overall = average(perWordAverages);
+      const nextVerdict: Verdict = overall >= LevelPassThreshold ? 'pass' : overall < LevelDropThreshold ? 'drop' : 'repeat';
       const ceiling = maxContentLevel();
-      const newLevel = verdict === 'pass' ? (level + 1 <= ceiling ? level + 1 : level) : verdict === 'drop' ? Math.max(1, level - 1) : level;
-      await setLevel(newLevel);
-
-      setOutcome({ overall, wordScore, sentenceScore, pronScore, verdict });
+      const nextLevel = nextVerdict === 'pass' ? Math.min(level + 1, ceiling) : nextVerdict === 'drop' ? Math.max(1, level - 1) : level;
+      await setLevel(nextLevel);
+      setSessionScore(overall);
+      setVerdict(nextVerdict);
+      setNewLevel(nextLevel);
+      setDone(true);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  }, [phase, done, sample, meaningResults, recallScores, recordReviewOutcome, level, setLevel]);
+
+  const scoreMessage =
+    sessionScore >= MasteryThreshold ? '완벽해요! 👏' : sessionScore >= WeaknessThreshold ? '좋아요, 꾸준히 하고 있어요' : '조금 더 복습하면 금방 좋아져요';
+  const verdictMessage =
+    verdict === 'pass'
+      ? `Level ${level}을 통과했어요. Level ${newLevel}로 이동합니다.`
+      : verdict === 'drop'
+        ? `Level ${newLevel}부터 다시 다져볼게요.`
+        : `Level ${level}을 조금 더 연습해봐요.`;
 
   if (sample.length === 0) {
     return (
@@ -275,10 +174,8 @@ export default function LevelStudy() {
   }
 
   const currentWord = sample[index];
-  const wordPhrases = phrasesFor(currentWord);
-  const pronPhrase = wordPhrases[0];
-  const situationPhrase = wordPhrases[1] ?? wordPhrases[0];
-  const situationContext = situationPhrase ? contexts.find((c) => c.id === situationPhrase.contextId) : undefined;
+  const recallPhrase = phrasePick[currentWord?.id];
+  const recallContext = recallPhrase ? contexts.find((c) => c.id === recallPhrase.contextId) : undefined;
 
   return (
     <ThemedView style={styles.flex}>
@@ -286,36 +183,13 @@ export default function LevelStudy() {
         <View style={styles.container}>
           <View style={styles.headerRow}>
             <ThemedText type="smallBold" themeColor="textSecondary">
-              Level {level} · {PHASE_LABEL[phase]}
-              {phase !== 'result' && phase !== 'confirm-skip' ? ` (${index + 1}/${sample.length})` : ''}
+              Level {level} 학습 · {phase === 'meaning-test' ? '뜻 확인' : phase === 'recall-test' ? '상황 적용' : '결과'}
+              {phase !== 'result' ? ` (${index + 1}/${sample.length})` : ''}
             </ThemedText>
             <BackButton />
           </View>
 
-          {phase === 'expose' && (
-            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
-                이번에 배울 단어
-              </ThemedText>
-              <ThemedText type="title" style={{ fontSize: 32, marginBottom: Spacing.one }}>
-                {currentWord.word}
-              </ThemedText>
-              <PrimaryButton
-                label={isTtsSupported() ? '🔊 발음 듣기' : '🔊 발음 듣기 (미지원 브라우저)'}
-                variant="secondary"
-                onPress={() => speak(currentWord.word, { gender: voiceGenderForLevel(level) })}
-              />
-              <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.three, marginBottom: Spacing.three }}>
-                {currentWord.meaning} · {currentWord.definition}
-              </ThemedText>
-              <PrimaryButton
-                label={index + 1 < sample.length ? '다음 단어' : '테스트 시작하기'}
-                onPress={() => (index + 1 < sample.length ? setIndex(index + 1) : startWordTest())}
-              />
-            </View>
-          )}
-
-          {phase === 'word-test' && (
+          {phase === 'meaning-test' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
               <ThemedText type="title" style={{ fontSize: 32, marginBottom: Spacing.two }}>
                 {currentWord.word}
@@ -329,9 +203,9 @@ export default function LevelStudy() {
               <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
                 이 단어의 뜻은 무엇일까요?
               </ThemedText>
-              {wordTestChoices.map((choice) => {
-                const isAnswered = wordTestAnswered !== null;
-                const isPicked = wordTestAnswered === choice.id;
+              {meaningChoices.map((choice) => {
+                const isAnswered = meaningAnswered !== null;
+                const isPicked = meaningAnswered === choice.id;
                 const variant: 'success' | 'danger' | 'secondary' = isAnswered && choice.correct ? 'success' : isPicked ? 'danger' : 'secondary';
                 return (
                   <View key={choice.id} style={{ marginBottom: 8 }}>
@@ -339,79 +213,36 @@ export default function LevelStudy() {
                       label={`${choice.meaning}${isAnswered && choice.correct ? '  정답' : isPicked ? '  오답' : ''}`}
                       variant={variant}
                       disabled={isAnswered}
-                      onPress={() => answerWordTest(choice.id)}
+                      onPress={() => answerMeaning(choice.id)}
                     />
                   </View>
                 );
               })}
-              {wordTestAnswered && (
+              {meaningAnswered && (
                 <>
                   <View style={{ height: Spacing.two }} />
-                  <PrimaryButton label="다음" onPress={nextWordTest} />
+                  <PrimaryButton label="다음" onPress={nextMeaning} />
                 </>
               )}
             </View>
           )}
 
-          {phase === 'pronunciation-test' && (
+          {phase === 'recall-test' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
-                예문을 따라 읽으며 발음해보세요
-              </ThemedText>
-              <ThemedText type="title" style={{ fontSize: 24, marginBottom: Spacing.one }}>
-                {currentWord.word}
-              </ThemedText>
-              <ThemedText style={{ marginBottom: Spacing.three }}>{pronPhrase?.text ?? currentWord.word}</ThemedText>
-              <PrimaryButton
-                label="🔊 듣기"
-                variant="secondary"
-                onPress={() => speak(pronPhrase?.text ?? currentWord.word, { gender: voiceGenderForLevel(level) })}
-              />
-              <View style={{ height: 8 }} />
-              {isSttSupported() && (
-                <>
-                  <PrimaryButton
-                    label={pronListening ? '🎙 듣는 중...' : '🎙 녹음해서 말하기'}
-                    onPress={recordPronunciation}
-                    disabled={pronListening}
-                  />
-                  <View style={{ height: 8 }} />
-                </>
-              )}
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-                placeholder="말한(또는 입력할) 문장을 여기서 확인·수정하세요"
-                placeholderTextColor={theme.textSecondary}
-                value={pronTranscript}
-                onChangeText={(text) => {
-                  setPronTranscript(text);
-                  setPronUsedVoice(false);
-                }}
-              />
-              <View style={{ height: Spacing.three }} />
-              <PrimaryButton label="다음" onPress={submitPronunciation} disabled={!pronTranscript} />
-              <ThemedText type="link" themeColor="textSecondary" onPress={skipPronunciation} style={{ marginTop: Spacing.two }}>
-                말하기 어려운 상황이신가요? 건너뛰기 →
-              </ThemedText>
-            </View>
-          )}
-
-          {phase === 'sentence-test' && (
-            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              {situationContext && (
+              {recallContext && (
                 <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.two }}>
-                  상황: {situationContext.description}
+                  상황: {recallContext.description}
                 </ThemedText>
               )}
-              {situationPhrase?.question ? (
+              {recallPhrase?.question ? (
                 <>
                   <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.one }}>
-                    {situationPhrase.question}
+                    {recallPhrase.question}
                   </ThemedText>
                   <PrimaryButton
                     label="🔊 듣기"
                     variant="secondary"
-                    onPress={() => speak(situationPhrase.question!, { gender: voiceGenderForLevel(level) })}
+                    onPress={() => speak(recallPhrase.question!, { gender: voiceGenderForLevel(level) })}
                   />
                   <ThemedText themeColor="textSecondary" style={{ marginTop: Spacing.two, marginBottom: Spacing.two }}>
                     위 질문에 "{currentWord.word}"를 사용해서 대답해보세요
@@ -422,9 +253,9 @@ export default function LevelStudy() {
                   이 상황에서 "{currentWord.word}"를 사용해 말하거나 써보세요
                 </ThemedText>
               )}
-              {isSttSupported() && !sentenceSubmitted && (
+              {isSttSupported() && !recallSubmitted && (
                 <>
-                  <PrimaryButton label="🎙 말로 하기" variant="secondary" onPress={recordSentenceSpeech} />
+                  <PrimaryButton label="🎙 말로 하기" variant="secondary" onPress={recordRecallSpeech} />
                   <View style={{ height: 8 }} />
                 </>
               )}
@@ -432,55 +263,40 @@ export default function LevelStudy() {
                 style={[styles.input, { borderColor: theme.border, color: theme.text }]}
                 placeholder="Write (or speak) a sentence with the word..."
                 placeholderTextColor={theme.textSecondary}
-                value={sentenceText}
-                onChangeText={setSentenceText}
+                value={recallText}
+                onChangeText={setRecallText}
                 multiline
-                editable={!sentenceSubmitted}
+                editable={!recallSubmitted}
               />
-              {!sentenceSubmitted ? (
-                <PrimaryButton label="제출" onPress={submitSentence} disabled={sentenceText.trim().length === 0} />
+              {!recallSubmitted ? (
+                <PrimaryButton label="제출" onPress={submitRecall} disabled={recallText.trim().length === 0} />
               ) : (
-                <PrimaryButton label="다음" onPress={nextSentence} />
+                <PrimaryButton label="다음" onPress={nextRecall} />
               )}
-            </View>
-          )}
-
-          {phase === 'confirm-skip' && (
-            <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: Spacing.two }}>
-                발음 테스트를 {pronunciationSkippedCount}개 건너뛰었어요
-              </ThemedText>
-              <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-                건너뛴 문항은 점수에서 제외하고 진행할 수 있어요. 그래도 다음 단계(문장 테스트)로 넘어갈까요?
-              </ThemedText>
-              <PrimaryButton label="네, 이대로 진행할게요" onPress={beginSentenceTest} />
-              <View style={{ height: 8 }} />
-              <PrimaryButton label="아니요, 발음 테스트를 다시 할게요" variant="secondary" onPress={redoPronunciationFromScratch} />
             </View>
           )}
 
           {phase === 'result' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
-              {!outcome ? (
+              {!done ? (
                 <ThemedText>결과를 계산하는 중...</ThemedText>
               ) : (
                 <>
                   <ThemedText type="title" style={{ fontSize: 28, marginBottom: Spacing.two }}>
-                    {outcome.verdict === 'pass' ? '통과! 🎉' : outcome.verdict === 'repeat' ? '이 레벨을 한 번 더' : '조금 쉬운 레벨로'}
+                    {verdict === 'pass' ? '통과! 🎉' : verdict === 'repeat' ? '이 레벨을 한 번 더' : '조금 쉬운 레벨로'}
                   </ThemedText>
+                  <View style={[styles.scoreBox, { backgroundColor: theme.backgroundSelected }]}>
+                    <ThemedText type="title" style={{ fontSize: 44 }}>
+                      {sessionScore}
+                      <ThemedText type="subtitle">점</ThemedText>
+                    </ThemedText>
+                    <ThemedText type="smallBold" style={{ marginTop: 2 }}>
+                      {scoreMessage}
+                    </ThemedText>
+                  </View>
                   <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-                    {outcome.verdict === 'pass'
-                      ? `Level ${level}을 통과했어요. Level ${Math.min(level + 1, maxContentLevel())}로 이동합니다.`
-                      : outcome.verdict === 'repeat'
-                        ? `Level ${level}을 조금 더 연습해봐요.`
-                        : `Level ${Math.max(1, level - 1)}부터 다시 다져볼게요.`}
+                    {verdictMessage}
                   </ThemedText>
-                  <Row label="단어 테스트" value={`${outcome.wordScore}%`} />
-                  <Row label="발음 테스트" value={outcome.pronScore !== null ? `${outcome.pronScore}%` : '건너뜀'} />
-                  <Row label="문장 테스트" value={`${outcome.sentenceScore}%`} />
-                  <View style={styles.divider} />
-                  <Row label="종합 점수" value={`${outcome.overall}%`} />
-                  <View style={{ height: Spacing.four }} />
                   <PrimaryButton label="대시보드로 돌아가기" onPress={() => router.replace('/')} />
                 </>
               )}
@@ -492,15 +308,6 @@ export default function LevelStudy() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string | number }) {
-  return (
-    <View style={styles.rowBetween}>
-      <ThemedText themeColor="textSecondary">{label}</ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four },
@@ -508,6 +315,7 @@ const styles = StyleSheet.create({
   container: { width: '100%', maxWidth: MaxContentWidth, paddingHorizontal: Spacing.four },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.three },
   card: { borderRadius: 22, padding: Spacing.four },
+  scoreBox: { alignItems: 'center', borderRadius: 18, paddingVertical: Spacing.three, marginBottom: Spacing.three },
   input: {
     borderWidth: 1,
     borderRadius: 10,
@@ -516,6 +324,4 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.three,
     fontSize: 16,
   },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  divider: { height: 1, backgroundColor: 'rgba(128,128,128,0.2)', marginVertical: 8 },
 });
