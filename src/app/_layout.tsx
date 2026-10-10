@@ -7,6 +7,7 @@ export default function RootLayout() {
     <ThemeProvider value={DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
         <Stack.Screen name="lesson" />
         <Stack.Screen name="placement-test" />
         <Stack.Screen name="level-study" />

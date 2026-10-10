@@ -29,7 +29,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (ready && !levelStore.placementCompleted) {
-      router.replace('/placement-test');
+      router.replace('/onboarding');
     }
   }, [ready, levelStore.placementCompleted, router]);
 
@@ -61,7 +61,7 @@ export default function Dashboard() {
     const confirmed = await confirmResetProgress();
     if (!confirmed) return;
     await resetAllProgress();
-    router.replace('/placement-test');
+    router.replace('/onboarding');
   }
 
   return (
