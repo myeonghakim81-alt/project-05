@@ -7,36 +7,39 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { contexts } from '@/content/contexts';
-import { phrasesForWord, vocabulary, vocabularyById } from '@/content/vocabulary';
-import { DailyReviewCap, WeaknessThreshold } from '@/lib/policy';
+import { phrasesForWord, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
+import { buildDailySession, type DailySessionItem } from '@/lib/masteryEngine';
+import { DailyCarryOverWords, DailyReviewCap, DailySessionSize, WeaknessThreshold } from '@/lib/policy';
 import { average, buildWordMeaningChoices, scoreExpressSentence, shuffle, type MeaningChoice } from '@/lib/scoring';
-import { dueForReview } from '@/lib/srs';
 import { isSttSupported, isTtsSupported, speak, startListening, voiceGenderForLevel } from '@/lib/speech';
 import { useLearnerStore } from '@/store/learnerStore';
+import { useLevelStore } from '@/store/levelStore';
 import { useTheme } from '@/hooks/use-theme';
-import type { VocabularyItem } from '@/types/domain';
 
-// A quick daily pass, not another full level-study session (spec 14: review
-// means recall in a new context, not redoing the same drill) — meaning
-// recall, then a situational answer using a phrase other than whichever one
-// pronunciation-testing happened to land on before. No pronunciation step,
-// no level change: this only feeds the spaced-repetition schedule.
+// "오늘의 학습" — a single daily session that mixes spaced-repetition review
+// (any level, so difficulty is naturally mixed) with a trickle of new words
+// from the current level, instead of /level-study's single-level scope. See
+// buildDailySession (src/lib/masteryEngine.ts) for the exact composition
+// rule. Quick 2-phase pass per word (meaning recall, then a situational
+// answer in a newly-picked example context) — deliberately lighter than
+// level-study's 4-step loop, and no level change here.
 type Phase = 'meaning-test' | 'recall-test' | 'result';
 
 const PHASE_LABEL: Record<Phase, string> = {
-  'meaning-test': '복습 · 뜻 확인',
-  'recall-test': '복습 · 새 상황에서 떠올리기',
+  'meaning-test': '오늘의 학습 · 뜻 확인',
+  'recall-test': '오늘의 학습 · 새 상황에서 떠올리기',
   result: '결과',
 };
 
-export default function Review() {
+export default function Daily() {
   const router = useRouter();
   const theme = useTheme();
   const entries = useLearnerStore((s) => s.entries);
+  const currentLevel = useLevelStore((s) => s.currentLevel);
   const recordReviewOutcome = useLearnerStore((s) => s.recordReviewOutcome);
   const recordWordTestResult = useLearnerStore((s) => s.recordWordTestResult);
 
-  const [sample, setSample] = useState<VocabularyItem[]>([]);
+  const [sample, setSample] = useState<DailySessionItem[]>([]);
   const [phrasePick, setPhrasePick] = useState<Record<string, ReturnType<typeof phrasesForWord>[number] | undefined>>({});
   const [phase, setPhase] = useState<Phase>('meaning-test');
   const [index, setIndex] = useState(0);
@@ -52,25 +55,31 @@ export default function Review() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    const dueIds = dueForReview(entries).slice(0, DailyReviewCap);
-    const words = dueIds.map((id) => vocabularyById(id)).filter((w): w is VocabularyItem => Boolean(w));
+    const words = buildDailySession(
+      vocabulary,
+      vocabularyByLevel(currentLevel),
+      entries,
+      DailySessionSize,
+      DailyReviewCap,
+      DailyCarryOverWords,
+    );
     setSample(words);
     const picks: typeof phrasePick = {};
-    for (const w of words) {
-      const options = phrasesForWord(w.id);
-      picks[w.id] = shuffle(options)[0];
+    for (const { item } of words) {
+      const options = phrasesForWord(item.id);
+      picks[item.id] = shuffle(options)[0];
     }
     setPhrasePick(picks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function prepareMeaningQuestion(word: VocabularyItem) {
+  function prepareMeaningQuestion(word: DailySessionItem['item']) {
     setMeaningChoices(buildWordMeaningChoices(word, vocabulary));
     setMeaningAnswered(null);
   }
 
   useEffect(() => {
-    if (sample.length > 0) prepareMeaningQuestion(sample[0]);
+    if (sample.length > 0) prepareMeaningQuestion(sample[0].item);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sample]);
 
@@ -92,11 +101,11 @@ export default function Review() {
     const correct = meaningChoices.find((c) => c.id === meaningAnswered)?.correct ?? false;
     const results = [...meaningResults, correct];
     setMeaningResults(results);
-    recordWordTestResult(sample[index].id, correct);
+    recordWordTestResult(sample[index].item.id, correct);
     const nextIndex = index + 1;
     if (nextIndex < sample.length) {
       setIndex(nextIndex);
-      prepareMeaningQuestion(sample[nextIndex]);
+      prepareMeaningQuestion(sample[nextIndex].item);
     } else {
       setIndex(0);
       setRecallScores([]);
@@ -107,7 +116,7 @@ export default function Review() {
   }
 
   function submitRecall() {
-    const score = scoreExpressSentence(sample[index].word, recallText);
+    const score = scoreExpressSentence(sample[index].item.word, recallText);
     setRecallScores((prev) => [...prev, score]);
     setRecallSubmitted(true);
   }
@@ -134,7 +143,7 @@ export default function Review() {
       for (let i = 0; i < sample.length; i++) {
         const perWordScores = [meaningResults[i] ? 100 : 0, recallScores[i]];
         const succeeded = average(perWordScores) >= WeaknessThreshold;
-        await recordReviewOutcome(sample[i].id, succeeded);
+        await recordReviewOutcome(sample[i].item.id, succeeded);
       }
       setDone(true);
     })();
@@ -144,29 +153,38 @@ export default function Review() {
     return (
       <ThemedView style={styles.centered}>
         <ThemedText type="title" style={{ marginBottom: Spacing.two }}>
-          오늘 복습할 단어가 없어요
+          오늘의 학습 단어가 없어요
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-          레벨 학습을 하고 나면, 익힌 단어가 며칠 뒤 여기 다시 나타나요.
+          Level 학습을 하고 나면, 복습할 단어와 새 단어가 여기 매일 채워져요.
         </ThemedText>
         <PrimaryButton label="대시보드로 돌아가기" onPress={() => router.replace('/')} />
       </ThemedView>
     );
   }
 
-  const currentWord = sample[index];
+  const current = sample[index];
+  const currentWord = current.item;
   const recallPhrase = phrasePick[currentWord?.id];
   const recallContext = recallPhrase ? contexts.find((c) => c.id === recallPhrase.contextId) : undefined;
+  const newCount = sample.filter((s) => s.isNew).length;
 
   return (
     <ThemedView style={styles.flex}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           <View style={styles.headerRow}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              {PHASE_LABEL[phase]}
-              {phase !== 'result' ? ` (${index + 1}/${sample.length})` : ''}
-            </ThemedText>
+            <View style={styles.headerLeft}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                {PHASE_LABEL[phase]}
+                {phase !== 'result' ? ` (${index + 1}/${sample.length})` : ''}
+              </ThemedText>
+              {phase !== 'result' && (
+                <ThemedText type="smallBold" style={[styles.levelChip, { backgroundColor: theme.backgroundSelected }]}>
+                  Lv.{currentWord.level}
+                </ThemedText>
+              )}
+            </View>
             <ThemedText type="linkPrimary" onPress={() => router.replace('/')}>
               나가기
             </ThemedText>
@@ -174,6 +192,13 @@ export default function Review() {
 
           {phase === 'meaning-test' && (
             <View style={[styles.card, { backgroundColor: theme.backgroundElement }]}>
+              {current.isCarryOver && (
+                <View style={[styles.carryBadge, { backgroundColor: theme.backgroundSelected }]}>
+                  <ThemedText type="small" style={{ fontWeight: '700' }}>
+                    어제도 만났던 단어예요
+                  </ThemedText>
+                </View>
+              )}
               <ThemedText type="title" style={{ fontSize: 32, marginBottom: Spacing.two }}>
                 {currentWord.word}
               </ThemedText>
@@ -266,10 +291,10 @@ export default function Review() {
               ) : (
                 <>
                   <ThemedText type="title" style={{ fontSize: 28, marginBottom: Spacing.two }}>
-                    오늘의 복습 완료! 🎉
+                    오늘의 학습 완료! 🎉
                   </ThemedText>
                   <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-                    {sample.length}개 단어를 복습했어요. 다음 복습 시점은 단어별로 자동으로 조금씩 더 늘어나요.
+                    {sample.length}개 단어 중 복습 {sample.length - newCount}개 · 새 단어 {newCount}개를 했어요. 내일 또 만나요.
                   </ThemedText>
                   <PrimaryButton label="대시보드로 돌아가기" onPress={() => router.replace('/')} />
                 </>
@@ -288,6 +313,9 @@ const styles = StyleSheet.create({
   scrollContent: { alignItems: 'center', paddingVertical: Spacing.five },
   container: { width: '100%', maxWidth: MaxContentWidth, paddingHorizontal: Spacing.four },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.three },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  levelChip: { fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: 'hidden' },
+  carryBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, marginBottom: Spacing.two },
   card: { borderRadius: 22, padding: Spacing.four },
   input: {
     borderWidth: 1,

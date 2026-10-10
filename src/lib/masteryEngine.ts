@@ -6,6 +6,7 @@ import {
   vocabularyToSpeechGap,
 } from '@/lib/policy';
 import { shuffle } from '@/lib/scoring';
+import { dueForReview } from '@/lib/srs';
 import type { LearnerVocabulary, MasteryState, NextActivity, SkillScores, VocabularyItem } from '@/types/domain';
 
 // spec 13: adaptive "what to practice next" — bottleneck-driven, in order.
@@ -109,6 +110,67 @@ export function pickLevelStudySample(
     }
   }
   return sample;
+}
+
+export interface DailySessionItem {
+  item: VocabularyItem;
+  isNew: boolean;
+  isCarryOver: boolean;
+}
+
+// /daily ("오늘의 학습"): a single session that mixes spaced-repetition
+// review (any level, so difficulty is naturally mixed) with a trickle of
+// new words from the learner's current level, instead of /level-study's
+// single-level scope. Composition, in priority order:
+//   1. words due for review today (dueForReview), capped at `reviewCap`
+//   2. up to `carryOverCount` words whose LAST review fell on the previous
+//      calendar day and aren't already covered by (1) — forces 1-2 very
+//      recent words to resurface a day later even before their formal SRS
+//      gap is up
+//   3. new words from the current level (pickLevelStudySample) filling the
+//      rest up to `sessionSize`
+export function buildDailySession(
+  allWords: VocabularyItem[],
+  currentLevelWords: VocabularyItem[],
+  entries: Record<string, LearnerVocabulary>,
+  sessionSize: number,
+  reviewCap: number,
+  carryOverCount: number,
+  now: Date = new Date(),
+): DailySessionItem[] {
+  const dueIds = dueForReview(entries, now).slice(0, reviewCap);
+  const dueSet = new Set(dueIds);
+
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const carryCandidates = Object.values(entries)
+    .filter((e) => !dueSet.has(e.vocabularyItemId) && e.lastReviewedAt)
+    .filter((e) => {
+      const t = new Date(e.lastReviewedAt as string).getTime();
+      return t >= yesterdayStart.getTime() && t < todayStart.getTime();
+    })
+    .map((e) => e.vocabularyItemId);
+  const carryIds = shuffle(carryCandidates).slice(0, carryOverCount);
+
+  const reviewIds = [...dueIds, ...carryIds];
+  const carrySet = new Set(carryIds);
+  const reviewItems: DailySessionItem[] = reviewIds
+    .map((id) => allWords.find((w) => w.id === id))
+    .filter((w): w is VocabularyItem => Boolean(w))
+    .map((item) => ({ item, isNew: false, isCarryOver: carrySet.has(item.id) }));
+
+  const usedIds = new Set(reviewItems.map((r) => r.item.id));
+  const remaining = Math.max(0, sessionSize - reviewItems.length);
+  const newItems: DailySessionItem[] = pickLevelStudySample(
+    currentLevelWords.filter((w) => !usedIds.has(w.id)),
+    entries,
+    remaining,
+  ).map((item) => ({ item, isNew: !entries[item.id], isCarryOver: false }));
+
+  return [...reviewItems, ...newItems];
 }
 
 export interface DashboardSummary {

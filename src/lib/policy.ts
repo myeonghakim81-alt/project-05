@@ -37,9 +37,16 @@ export function vocabularyToSpeechGap(scores: {
 
 export const SpacedReviewIntervalsDays = [1, 2, 4, 7, 14, 30];
 
-// How many due words a single /review session pulls in at once — reviews
-// are meant to be a quick daily pass, not another full level-study session.
-export const DailyReviewCap = 15;
+// /daily ("오늘의 학습") blends spaced-repetition review with a trickle of
+// new words from the current level into one mixed-difficulty session,
+// instead of being scoped to a single level like /level-study. Total words
+// per session; how many of those can come from the due-for-review queue;
+// and how many words touched the PREVIOUS calendar day get force-included
+// even if not yet formally due, so very recent words get one extra pass
+// before the normal spaced-review gap kicks in.
+export const DailySessionSize = 12;
+export const DailyReviewCap = 10;
+export const DailyCarryOverWords = 2;
 
 // spec 17: the curriculum runs Level 1-10. Content doesn't necessarily exist
 // yet for every level (see vocabularyByLevel) — this is the ceiling the

@@ -7,8 +7,8 @@ import { SkillBar } from '@/components/skill-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { vocabulary, vocabularyByLevel } from '@/content/vocabulary';
-import { summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
-import { dueForReview } from '@/lib/srs';
+import { buildDailySession, summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
+import { DailyCarryOverWords, DailyReviewCap, DailySessionSize } from '@/lib/policy';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { AccentPalette, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -54,7 +54,18 @@ export default function Dashboard() {
   const summary = summarizeDashboard(entryList);
   const bottleneck = entryList.length > 0 ? weakestSkill(summary.scores) : 'recognition';
   const levelWordCount = vocabularyByLevel(levelStore.currentLevel).length;
-  const dueCount = dueForReview(entries).length;
+
+  const dailySample = buildDailySession(
+    vocabulary,
+    vocabularyByLevel(levelStore.currentLevel),
+    entries,
+    DailySessionSize,
+    DailyReviewCap,
+    DailyCarryOverWords,
+  );
+  const dailyNewCount = dailySample.filter((s) => s.isNew).length;
+  const dailyReviewCount = dailySample.length - dailyNewCount;
+  const dailyLevels = Array.from(new Set(dailySample.map((s) => s.item.level))).sort((a, b) => a - b);
 
   return (
     <ThemedView style={styles.flex}>
@@ -65,35 +76,73 @@ export default function Dashboard() {
             Overall {summary.overall}
           </ThemedText>
 
-          <View style={[styles.card, { backgroundColor: AccentPalette[0] }]}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              현재 레벨
-            </ThemedText>
-            <ThemedText type="title" style={{ fontSize: 40, marginBottom: 4 }}>
-              Level {levelStore.currentLevel}
+          <ThemedText type="smallBold" themeColor="textSecondary" style={styles.modeSectionLabel}>
+            오늘 뭐 할래요?
+          </ThemedText>
+
+          <View style={[styles.card, styles.dailyCard, { backgroundColor: AccentPalette[0], borderColor: theme.primary }]}>
+            <View style={[styles.recommendedBadge, { backgroundColor: theme.primary }]}>
+              <ThemedText type="small" style={{ color: theme.primaryText, fontWeight: '800' }}>
+                추천
+              </ThemedText>
+            </View>
+            <ThemedText type="subtitle" style={{ fontSize: 20, marginBottom: 4 }}>
+              오늘의 학습
             </ThemedText>
             <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-              단어 {levelWordCount}개 · 병목: {bottleneck}
+              여러 레벨 단어가 섞여서 나와요 — 복습 때 된 단어 + 새 단어
             </ThemedText>
-            <PrimaryButton label={`Level ${levelStore.currentLevel} 학습 시작`} onPress={() => router.push('/level-study')} />
-            <View style={{ height: 8 }} />
-            <PrimaryButton label="레벨 테스트 다시 보기" variant="secondary" onPress={() => router.push('/placement-test')} />
+
+            <View style={styles.statRow}>
+              <View style={styles.statBox}>
+                <ThemedText type="title" style={{ fontSize: 20 }}>
+                  {dailySample.length}
+                  <ThemedText type="small">개</ThemedText>
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '600', marginTop: 2 }}>
+                  오늘 준비됨
+                </ThemedText>
+              </View>
+              <View style={styles.statBox}>
+                <ThemedText type="smallBold">
+                  복습 {dailyReviewCount} · 새 단어 {dailyNewCount}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ fontWeight: '600', marginTop: 4 }}>
+                  구성
+                </ThemedText>
+              </View>
+            </View>
+
+            {dailyLevels.length > 0 && (
+              <View style={styles.chipRow}>
+                {dailyLevels.slice(0, 5).map((lvl) => (
+                  <View key={lvl} style={[styles.chip, { borderColor: theme.border }]}>
+                    <ThemedText type="small" style={{ fontWeight: '700' }}>
+                      Lv.{lvl}
+                    </ThemedText>
+                  </View>
+                ))}
+                {dailyLevels.length > 1 && (
+                  <ThemedText type="small" themeColor="textSecondary" style={{ alignSelf: 'center', marginLeft: 2 }}>
+                    난이도 섞임
+                  </ThemedText>
+                )}
+              </View>
+            )}
+
+            <PrimaryButton label="시작하기" onPress={() => router.push('/daily')} />
           </View>
 
           <View style={[styles.card, { backgroundColor: AccentPalette[1] }]}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              오늘의 복습
+            <ThemedText type="subtitle" style={{ fontSize: 18, marginBottom: 4 }}>
+              Level {levelStore.currentLevel} 학습
             </ThemedText>
-            {dueCount > 0 ? (
-              <>
-                <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-                  {dueCount}개 단어가 복습할 때가 됐어요.
-                </ThemedText>
-                <PrimaryButton label="복습 시작하기" onPress={() => router.push('/review')} />
-              </>
-            ) : (
-              <ThemedText themeColor="textSecondary">아직 복습할 단어가 없어요. 레벨 학습을 마치면 며칠 뒤 여기 다시 나타나요.</ThemedText>
-            )}
+            <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
+              단어 {levelWordCount}개 중 진행 · 이 레벨만 집중 · 병목: {bottleneck}
+            </ThemedText>
+            <PrimaryButton label={`Level ${levelStore.currentLevel} 시작하기`} variant="secondary" onPress={() => router.push('/level-study')} />
+            <View style={{ height: 8 }} />
+            <PrimaryButton label="레벨 테스트 다시 보기" variant="secondary" onPress={() => router.push('/placement-test')} />
           </View>
 
           <View style={[styles.card, { backgroundColor: AccentPalette[2] }]}>
@@ -158,4 +207,18 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   divider: { height: 1, backgroundColor: 'rgba(128,128,128,0.2)', marginVertical: 8 },
   wordRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
+  modeSectionLabel: { marginTop: Spacing.four, marginBottom: 10, letterSpacing: 0.3 },
+  dailyCard: { marginTop: 0, borderWidth: 2, position: 'relative' },
+  recommendedBadge: {
+    position: 'absolute',
+    top: -11,
+    left: Spacing.four,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  statRow: { flexDirection: 'row', gap: 8, marginBottom: Spacing.three },
+  statBox: { flex: 1, backgroundColor: 'rgba(255,255,255,0.65)', borderRadius: 12, padding: 10 },
+  chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: Spacing.four },
+  chip: { backgroundColor: '#FFFFFF', borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
 });
