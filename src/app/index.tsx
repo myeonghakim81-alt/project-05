@@ -7,22 +7,12 @@ import { SkillBar } from '@/components/skill-bar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { vocabulary, vocabularyByLevel } from '@/content/vocabulary';
-import { buildDailySession, summarizeDashboard, weakestSkill } from '@/lib/masteryEngine';
+import { buildDailySession, levelLabel, summarizeDashboard } from '@/lib/masteryEngine';
 import { DailyCarryOverWords, DailyReviewCap, DailySessionSize } from '@/lib/policy';
 import { useLearnerStore } from '@/store/learnerStore';
 import { useLevelStore } from '@/store/levelStore';
 import { AccentPalette, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-
-const SKILL_LABELS: [key: string, label: string][] = [
-  ['recognition', 'Recognition'],
-  ['listening', 'Listening'],
-  ['recall', 'Recall'],
-  ['expression', 'Expression'],
-  ['conversationUsage', 'Conversation'],
-  ['contextTransfer', 'Context Transfer'],
-  ['automaticity', 'Automaticity'],
-];
 
 export default function Dashboard() {
   const router = useRouter();
@@ -52,7 +42,6 @@ export default function Dashboard() {
 
   const entryList = Object.values(entries);
   const summary = summarizeDashboard(entryList);
-  const bottleneck = entryList.length > 0 ? weakestSkill(summary.scores) : 'recognition';
   const levelWordCount = vocabularyByLevel(levelStore.currentLevel).length;
 
   const dailySample = buildDailySession(
@@ -72,9 +61,16 @@ export default function Dashboard() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           <ThemedText type="title">MY ENGLISH</ThemedText>
-          <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.four }}>
-            Overall {summary.overall}
-          </ThemedText>
+
+          <View style={[styles.card, styles.levelCard, { backgroundColor: AccentPalette[2] }]}>
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              현재 내 영어 실력
+            </ThemedText>
+            <ThemedText type="title" style={{ fontSize: 22, marginTop: 2, marginBottom: Spacing.three }}>
+              Lv.{levelStore.currentLevel} · {levelLabel(levelStore.currentLevel)}
+            </ThemedText>
+            <SkillBar label="종합 실력 점수" value={summary.overall} />
+          </View>
 
           <ThemedText type="smallBold" themeColor="textSecondary" style={styles.modeSectionLabel}>
             오늘 뭐 할래요?
@@ -138,28 +134,11 @@ export default function Dashboard() {
               Level {levelStore.currentLevel} 학습
             </ThemedText>
             <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
-              단어 {levelWordCount}개 중 진행 · 이 레벨만 집중 · 병목: {bottleneck}
+              단어 {levelWordCount}개 중 진행 · 이 레벨만 집중
             </ThemedText>
             <PrimaryButton label={`Level ${levelStore.currentLevel} 시작하기`} variant="secondary" onPress={() => router.push('/level-study')} />
             <View style={{ height: 8 }} />
             <PrimaryButton label="레벨 테스트 다시 보기" variant="secondary" onPress={() => router.push('/placement-test')} />
-          </View>
-
-          <View style={[styles.card, { backgroundColor: AccentPalette[2] }]}>
-            {SKILL_LABELS.map(([key, label]) => (
-              <SkillBar key={key} label={label} value={(summary.scores as any)[key]} />
-            ))}
-          </View>
-
-          <View style={[styles.card, { backgroundColor: AccentPalette[3] }]}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              어휘 구분
-            </ThemedText>
-            <Row label="Passive Vocabulary" value={summary.passiveVocabularyCount} />
-            <Row label="Active Vocabulary" value={summary.activeVocabularyCount} />
-            <Row label="Automatic Vocabulary" value={summary.automaticVocabularyCount} />
-            <View style={styles.divider} />
-            <Row label="Vocabulary-to-Speech Gap" value={`${summary.vocabularyToSpeechGap} points`} />
           </View>
 
           {reviewQueue.length > 0 && (
@@ -188,15 +167,6 @@ export default function Dashboard() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string | number }) {
-  return (
-    <View style={styles.rowBetween}>
-      <ThemedText themeColor="textSecondary">{label}</ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -204,9 +174,8 @@ const styles = StyleSheet.create({
   container: { width: '100%', maxWidth: MaxContentWidth, paddingHorizontal: Spacing.four },
   card: { borderRadius: 22, padding: Spacing.four, marginTop: Spacing.four },
   sectionTitle: { fontSize: 20, marginBottom: Spacing.three },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  divider: { height: 1, backgroundColor: 'rgba(128,128,128,0.2)', marginVertical: 8 },
   wordRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
+  levelCard: { marginTop: Spacing.three },
   modeSectionLabel: { marginTop: Spacing.four, marginBottom: 10, letterSpacing: 0.3 },
   dailyCard: { marginTop: 0, borderWidth: 2, position: 'relative' },
   recommendedBadge: {

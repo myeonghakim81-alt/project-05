@@ -47,6 +47,24 @@ export function weakestSkill(scores: SkillScores): keyof SkillScores {
   return entries.reduce((min, cur) => (cur[1] < min[1] ? cur : min))[0];
 }
 
+// Korean label for the dashboard's "현재 영어 실력" indicator, bucketed off
+// the curriculum level (1-MaxCurriculumLevel) rather than a raw skill score,
+// since that's the number learners already recognize from the level cards.
+const LevelLabelBands: [maxLevel: number, label: string][] = [
+  [2, '입문'],
+  [4, '초급'],
+  [6, '중급'],
+  [8, '중고급'],
+  [10, '고급'],
+];
+
+export function levelLabel(level: number): string {
+  for (const [maxLevel, label] of LevelLabelBands) {
+    if (level <= maxLevel) return label;
+  }
+  return '고급';
+}
+
 // Nudge a score toward a target, clamped 0-100. Used by every scoring step
 // instead of hard-setting values, so repeated practice moves gradually.
 export function nudge(current: number, target: number, weight = 0.4): number {

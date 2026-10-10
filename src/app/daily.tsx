@@ -9,7 +9,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { contexts } from '@/content/contexts';
 import { phrasesForWord, vocabulary, vocabularyByLevel } from '@/content/vocabulary';
 import { buildDailySession, type DailySessionItem } from '@/lib/masteryEngine';
-import { DailyCarryOverWords, DailyReviewCap, DailySessionSize, WeaknessThreshold } from '@/lib/policy';
+import { DailyCarryOverWords, DailyReviewCap, DailySessionSize, MasteryThreshold, WeaknessThreshold } from '@/lib/policy';
 import { average, buildWordMeaningChoices, scoreExpressSentence, shuffle, type MeaningChoice } from '@/lib/scoring';
 import { isSttSupported, isTtsSupported, speak, startListening, voiceGenderForLevel } from '@/lib/speech';
 import { useLearnerStore } from '@/store/learnerStore';
@@ -53,6 +53,7 @@ export default function Daily() {
   const [recallScores, setRecallScores] = useState<number[]>([]);
 
   const [done, setDone] = useState(false);
+  const [sessionScore, setSessionScore] = useState(0);
 
   useEffect(() => {
     const words = buildDailySession(
@@ -140,14 +141,20 @@ export default function Daily() {
   useEffect(() => {
     if (phase !== 'result' || done || sample.length === 0) return;
     (async () => {
+      const perWordAverages: number[] = [];
       for (let i = 0; i < sample.length; i++) {
         const perWordScores = [meaningResults[i] ? 100 : 0, recallScores[i]];
-        const succeeded = average(perWordScores) >= WeaknessThreshold;
-        await recordReviewOutcome(sample[i].item.id, succeeded);
+        const wordAverage = average(perWordScores);
+        perWordAverages.push(wordAverage);
+        await recordReviewOutcome(sample[i].item.id, wordAverage >= WeaknessThreshold);
       }
+      setSessionScore(average(perWordAverages));
       setDone(true);
     })();
   }, [phase, done, sample, meaningResults, recallScores, recordReviewOutcome]);
+
+  const scoreMessage =
+    sessionScore >= MasteryThreshold ? '완벽해요! 👏' : sessionScore >= WeaknessThreshold ? '좋아요, 꾸준히 하고 있어요' : '조금 더 복습하면 금방 좋아져요';
 
   if (sample.length === 0) {
     return (
@@ -293,6 +300,15 @@ export default function Daily() {
                   <ThemedText type="title" style={{ fontSize: 28, marginBottom: Spacing.two }}>
                     오늘의 학습 완료! 🎉
                   </ThemedText>
+                  <View style={[styles.scoreBox, { backgroundColor: theme.backgroundSelected }]}>
+                    <ThemedText type="title" style={{ fontSize: 44 }}>
+                      {sessionScore}
+                      <ThemedText type="subtitle">점</ThemedText>
+                    </ThemedText>
+                    <ThemedText type="smallBold" style={{ marginTop: 2 }}>
+                      {scoreMessage}
+                    </ThemedText>
+                  </View>
                   <ThemedText themeColor="textSecondary" style={{ marginBottom: Spacing.three }}>
                     {sample.length}개 단어 중 복습 {sample.length - newCount}개 · 새 단어 {newCount}개를 했어요. 내일 또 만나요.
                   </ThemedText>
@@ -317,6 +333,7 @@ const styles = StyleSheet.create({
   levelChip: { fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: 'hidden' },
   carryBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, marginBottom: Spacing.two },
   card: { borderRadius: 22, padding: Spacing.four },
+  scoreBox: { alignItems: 'center', borderRadius: 18, paddingVertical: Spacing.three, marginBottom: Spacing.three },
   input: {
     borderWidth: 1,
     borderRadius: 10,
